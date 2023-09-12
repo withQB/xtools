@@ -23,7 +23,7 @@ type eventV1 struct {
 	AuthEvents []eventReference `json:"auth_events"`
 }
 
-// MarshalJSON implements json.Marshaller
+// MarshalJSON im plements json.Marshaller
 func (e eventV1) MarshalJSON() ([]byte, error) {
 	if e.eventJSON == nil {
 		return nil, fmt.Errorf("gomatrixserverlib: cannot serialise uninitialised Event")
