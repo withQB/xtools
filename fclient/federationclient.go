@@ -66,7 +66,7 @@ type FederationClient interface {
 }
 
 // A FederationClient is a coddy federation client that adds
-// "Authorization: X-Matrix" headers to requests that need ed25519 signatures
+// "Authorization: X-Coddy" headers to requests that need ed25519 signatures
 type federationClient struct {
 	Client
 	identities []*SigningIdentity

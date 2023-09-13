@@ -153,7 +153,7 @@ func (r *FederationRequest) HTTPRequest() (*http.Request, error) {
 			return nil, fmt.Errorf("xtools: Request Destination isn't safe to include in an HTTP header")
 		}
 		httpReq.Header.Add("Authorization", fmt.Sprintf(
-			"X-Matrix origin=\"%s\",key=\"%s\",sig=\"%s\",destination=\"%s\"", r.fields.Origin, keyID, sig, r.fields.Destination,
+			"X-Coddy origin=\"%s\",key=\"%s\",sig=\"%s\",destination=\"%s\"", r.fields.Origin, keyID, sig, r.fields.Destination,
 		))
 	}
 
@@ -233,7 +233,7 @@ func VerifyHTTPRequest(
 	}
 
 	if request.Origin() == "" {
-		message := "Missing \"Authorization: X-Matrix ...\" HTTP header"
+		message := "Missing \"Authorization: X-Coddy ...\" HTTP header"
 		xutil.GetLogger(req.Context()).WithError(err).Print(message)
 		return nil, xutil.MessageResponse(401, message)
 	}
@@ -292,15 +292,15 @@ func readHTTPRequest(req *http.Request) (*FederationRequest, error) { // nolint:
 
 	for _, authorization := range req.Header["Authorization"] {
 		scheme, origin, destination, key, sig := ParseAuthorization(authorization)
-		if scheme != "X-Matrix" {
+		if scheme != "X-Coddy" {
 			// Ignore unknown types of Authorization.
 			continue
 		}
 		if origin == "" || key == "" || sig == "" {
-			return nil, fmt.Errorf("xtools: invalid X-Matrix authorization header")
+			return nil, fmt.Errorf("xtools: invalid X-Coddy authorization header")
 		}
 		if result.fields.Origin != "" && result.fields.Origin != origin {
-			return nil, fmt.Errorf("xtools: different origins in X-Matrix authorization headers")
+			return nil, fmt.Errorf("xtools: different origins in X-Coddy authorization headers")
 		}
 		result.fields.Origin = origin
 		result.fields.Destination = destination
@@ -317,7 +317,7 @@ func readHTTPRequest(req *http.Request) (*FederationRequest, error) { // nolint:
 func ParseAuthorization(header string) (scheme string, origin, destination spec.ServerName, key xtools.KeyID, sig string) {
 	parts := strings.SplitN(header, " ", 2)
 	scheme = parts[0]
-	if scheme != "X-Matrix" {
+	if scheme != "X-Coddy" {
 		return
 	}
 	if len(parts) != 2 {

@@ -461,13 +461,13 @@ func (s DeviceKeys) Value() (driver.Value, error) {
 	return json.Marshal(s)
 }
 
-// A Version is a struct that matches the version response from a Matrix homeserver. See
+// A Version is a struct that matches the version response from a Coddy homeserver. See
 type Version struct {
 	// Server is a struct containing the homserver version values
 	Server struct {
-		// Name is an arbitrary string that the Matrix server uses to identify itself
+		// Name is an arbitrary string that the Coddy server uses to identify itself
 		Name string `json:"name"`
-		// Version is a string that identifies the Matrix server's version, the format
+		// Version is a string that identifies the Coddy server's version, the format
 		// of which depends on the Matrx server implementation
 		Version string `json:"version"`
 	} `json:"server"`

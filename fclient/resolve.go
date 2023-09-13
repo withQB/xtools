@@ -9,7 +9,7 @@ import (
 	"github.com/withqb/xtools/spec"
 )
 
-// ResolutionResult is a result of looking up a Matrix homeserver according to
+// ResolutionResult is a result of looking up a Coddy homeserver according to
 // the federation specification.
 type ResolutionResult struct {
 	Destination   string          // The hostname and port to send federation requests to.
@@ -128,7 +128,7 @@ func handleNoWellKnown(ctx context.Context, serverName spec.ServerName) (results
 }
 
 func lookupSRV(ctx context.Context, serverName spec.ServerName) ([]*net.SRV, error) {
-	// Check coddy-fed service first, as of Matrix 1.8
+	// Check coddy-fed service first, as of Coddy 1.8
 	_, records, err := net.DefaultResolver.LookupSRV(ctx, "coddy-fed", "tcp", string(serverName))
 	if err != nil {
 		if dnserr, ok := err.(*net.DNSError); ok {

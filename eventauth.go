@@ -1096,11 +1096,11 @@ func (m *membershipAllower) membershipAllowedSelfForRestrictedJoin() error {
 // membershipAllowedFronThirdPartyInvite determines if the member events is following
 // up the third_party_invite event it claims.
 func (m *membershipAllower) membershipAllowedFromThirdPartyInvite() error {
-	// Check if the event's target matches with the Matrix ID provided by the
+	// Check if the event's target matches with the Coddy ID provided by the
 	// identity server.
 	if m.targetID != m.newMember.ThirdPartyInvite.Signed.MXID {
 		return errorf(
-			"The invite target %s doesn't match with the Matrix ID provided by the identity server %s",
+			"The invite target %s doesn't match with the Coddy ID provided by the identity server %s",
 			m.targetID, m.newMember.ThirdPartyInvite.Signed.MXID,
 		)
 	}
@@ -1131,7 +1131,7 @@ func (m *membershipAllower) membershipAllowedFromThirdPartyInvite() error {
 
 // membershipAllowedSelf determines if the change made by the user to their own membership is allowed.
 func (m *membershipAllower) membershipAllowedSelf() error { // nolint: gocyclo
-	// NOTSPEC: Leave -> Leave is benign but not allowed according to the Matrix spec.
+	// NOTSPEC: Leave -> Leave is benign but not allowed according to the Coddy spec.
 	// We allow this because of an issue regarding Synapse incorrectly accepting this event.
 	if m.oldMember.Membership == spec.Leave && m.newMember.Membership == spec.Leave {
 		return nil
