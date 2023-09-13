@@ -22,7 +22,6 @@ import (
 // Federation requests are signed by building a JSON object and signing it
 type FederationRequest struct {
 	// fields implement the JSON format needed for signing
-	// specified in https://matrix.org/docs/spec/server_server/unstable.html#request-authentication
 	fields struct {
 		Content     spec.RawJSON                                `json:"content,omitempty"`
 		Destination spec.ServerName                             `json:"destination"`

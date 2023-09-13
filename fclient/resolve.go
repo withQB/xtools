@@ -1,18 +1,3 @@
-/* Copyright 2016-2017 Vector Creations Ltd
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package fclient
 
 import (
@@ -33,7 +18,6 @@ type ResolutionResult struct {
 }
 
 // ResolveServer implements the server name resolution algorithm described at
-// https://matrix.org/docs/spec/server_server/r0.1.1.html#resolving-server-names
 // Returns a slice of ResolutionResult that can be used to send a federation
 // request to the server using a given server name.
 // Returns an error if the server name isn't valid.
@@ -47,7 +31,7 @@ func ResolveServer(ctx context.Context, serverName spec.ServerName) (results []R
 func resolveServer(ctx context.Context, serverName spec.ServerName, checkWellKnown bool) (results []ResolutionResult, err error) {
 	host, port, valid := spec.ParseAndValidateServerName(serverName)
 	if !valid {
-		err = fmt.Errorf("Invalid server name")
+		err = fmt.Errorf("invalid server name")
 		return
 	}
 

@@ -56,33 +56,33 @@ func ResolveStateConflictsV2(
 		resolvedOthers:            make(map[StateKeyTuple]PDU, len(conflicted)),
 		result:                    make([]PDU, 0, len(conflicted)+len(unconflicted)),
 	}
-	var roomID *spec.RoomID
+	var frameID *spec.FrameID
 	var err error
 	if len(conflicted) > 0 {
-		roomID, err = spec.NewRoomID(conflicted[0].RoomID())
+		frameID, err = spec.NewFrameID(conflicted[0].FrameID())
 		if err != nil {
 			panic(err)
 		}
 	}
 	if len(unconflicted) > 0 {
-		roomID, err = spec.NewRoomID(unconflicted[0].RoomID())
+		frameID, err = spec.NewFrameID(unconflicted[0].FrameID())
 		if err != nil {
 			panic(err)
 		}
 	}
 	if len(authEvents) > 0 {
-		roomID, err = spec.NewRoomID(authEvents[0].RoomID())
+		frameID, err = spec.NewFrameID(authEvents[0].FrameID())
 		if err != nil {
 			panic(err)
 		}
 	}
-	// If we still don't have a roomID, we don't have conflicted, unconflicted
+	// If we still don't have a frameID, we don't have conflicted, unconflicted
 	// or any authEvents, which in theory shouldn't happen.
-	if roomID == nil {
+	if frameID == nil {
 		return r.result
 	}
 
-	r.allower = newAllowerContext(&r.authProvider, userIDForSender, *roomID)
+	r.allower = newAllowerContext(&r.authProvider, userIDForSender, *frameID)
 
 	// This is a map to help us determine if an event already belongs to the
 	// unconflicted set. If it does then we shouldn't add it back into the
@@ -230,13 +230,13 @@ func HeaderedReverseTopologicalOrdering(events []PDU, order TopologicalOrder) []
 // will be mainline sorted.
 func isControlEvent(e PDU) bool {
 	switch e.Type() {
-	case spec.MRoomPowerLevels:
+	case spec.MFramePowerLevels:
 		// Power level events with an empty state key are control events.
 		return e.StateKeyEquals("")
-	case spec.MRoomJoinRules:
+	case spec.MFrameJoinRules:
 		// Join rule events with an empty state key are control events.
 		return e.StateKeyEquals("")
-	case spec.MRoomMember:
+	case spec.MFrameMember:
 		// Membership events must not have an empty state key.
 		if e.StateKey() == nil || e.StateKeyEquals("") {
 			break
@@ -326,8 +326,8 @@ func (r *stateResolverV2) calculateAuthDifference() []PDU {
 
 // createPowerLevelMainline generates the mainline of power level events,
 // starting at the currently resolved power level event from the topological
-// ordering and working our way back to the room creation. Note that we populate
-// the result here in reverse, so that the room creation is at the beginning of
+// ordering and working our way back to the frame creation. Note that we populate
+// the result here in reverse, so that the frame creation is at the beginning of
 // the list, rather than the end.
 func (r *stateResolverV2) createPowerLevelMainline() []PDU {
 	var mainline []PDU
@@ -345,7 +345,7 @@ func (r *stateResolverV2) createPowerLevelMainline() []PDU {
 			// that we can look up the event type.
 			if authEvent, ok := r.authEventMap[authEventID]; ok {
 				// Is the event a power event?
-				if authEvent.Type() == spec.MRoomPowerLevels && authEvent.StateKeyEquals("") {
+				if authEvent.Type() == spec.MFramePowerLevels && authEvent.StateKeyEquals("") {
 					// We found a power level event in the event's auth events - start
 					// the iterator from this new event.
 					iter(authEvent)
@@ -394,7 +394,7 @@ func (r *stateResolverV2) getFirstPowerLevelMainlineEvent(event PDU) (
 				continue
 			}
 			// If the event isn't a power level event then we'll ignore it.
-			if authEvent.Type() != spec.MRoomPowerLevels || !authEvent.StateKeyEquals("") {
+			if authEvent.Type() != spec.MFramePowerLevels || !authEvent.StateKeyEquals("") {
 				continue
 			}
 			// Is the event in the mainline?
@@ -477,11 +477,11 @@ func (r *stateResolverV2) applyEvents(events []PDU) {
 			// i.e. create events, power level events, join rules.
 			// Otherwise, they go in the "others".
 			switch st {
-			case spec.MRoomCreate:
+			case spec.MFrameCreate:
 				r.resolvedCreate = event
-			case spec.MRoomPowerLevels:
+			case spec.MFramePowerLevels:
 				r.resolvedPowerLevels = event
-			case spec.MRoomJoinRules:
+			case spec.MFrameJoinRules:
 				r.resolvedJoinRules = event
 			default:
 				r.resolvedOthers[StateKeyTuple{st, *sk}] = event
@@ -491,9 +491,9 @@ func (r *stateResolverV2) applyEvents(events []PDU) {
 			// i.e. membership events and 3PID invites. Otherwise,
 			// they go in the "others".
 			switch st {
-			case spec.MRoomThirdPartyInvite:
+			case spec.MFrameThirdPartyInvite:
 				r.resolvedThirdPartyInvites[*sk] = event
-			case spec.MRoomMember:
+			case spec.MFrameMember:
 				r.resolvedMembers[spec.SenderID(*sk)] = event
 			default:
 				r.resolvedOthers[StateKeyTuple{st, *sk}] = event
@@ -597,7 +597,7 @@ func (r *stateResolverV2) getPowerLevelFromAuthEvents(event PDU) int64 {
 		}
 
 		// Ignore the auth event if it isn't a power level event.
-		if authEvent.Type() != spec.MRoomPowerLevels || *authEvent.StateKey() != "" {
+		if authEvent.Type() != spec.MFramePowerLevels || *authEvent.StateKey() != "" {
 			continue
 		}
 

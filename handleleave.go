@@ -8,17 +8,17 @@ import (
 
 type HandleMakeLeaveResponse struct {
 	LeaveTemplateEvent ProtoEvent
-	RoomVersion        RoomVersion
+	FrameVersion        FrameVersion
 }
 
 type HandleMakeLeaveInput struct {
-	UserID            spec.UserID          // The user wanting to leave the room
-	SenderID          spec.SenderID        // The senderID of the user wanting to leave the room
-	RoomID            spec.RoomID          // The room the user wants to leave
-	RoomVersion       RoomVersion          // The room version for the room being left
+	UserID            spec.UserID          // The user wanting to leave the frame
+	SenderID          spec.SenderID        // The senderID of the user wanting to leave the frame
+	FrameID            spec.FrameID          // The frame the user wants to leave
+	FrameVersion       FrameVersion          // The frame version for the frame being left
 	RequestOrigin     spec.ServerName      // The server that sent the /make_leave federation request
 	LocalServerName   spec.ServerName      // The name of this local server
-	LocalServerInRoom bool                 // Whether this local server has a user currently joined to the room
+	LocalServerInFrame bool                 // Whether this local server has a user currently joined to the frame
 	UserIDQuerier     spec.UserIDForSender // Provides userIDs given a senderID
 
 	// Returns a fully built version of the proto event and a list of state events required to auth this event
@@ -32,17 +32,17 @@ func HandleMakeLeave(input HandleMakeLeaveInput) (*HandleMakeLeaveResponse, erro
 			input.RequestOrigin, input.UserID.Domain()))
 	}
 
-	// Check if we think we are still joined to the room
-	if !input.LocalServerInRoom {
-		return nil, spec.NotFound(fmt.Sprintf("Local server not currently joined to room: %s", input.RoomID.String()))
+	// Check if we think we are still joined to the frame
+	if !input.LocalServerInFrame {
+		return nil, spec.NotFound(fmt.Sprintf("Local server not currently joined to frame: %s", input.FrameID.String()))
 	}
 
 	// Try building an event for the server
 	rawSenderID := string(input.SenderID)
 	proto := ProtoEvent{
 		SenderID: string(input.SenderID),
-		RoomID:   input.RoomID.String(),
-		Type:     spec.MRoomMember,
+		FrameID:   input.FrameID.String(),
+		Type:     spec.MFrameMember,
 		StateKey: &rawSenderID,
 	}
 	content := MemberContent{
@@ -63,7 +63,7 @@ func HandleMakeLeave(input HandleMakeLeaveInput) (*HandleMakeLeaveResponse, erro
 	if stateEvents == nil {
 		return nil, spec.InternalServerError{Err: "template builder returned nil event state"}
 	}
-	if event.Type() != spec.MRoomMember {
+	if event.Type() != spec.MFrameMember {
 		return nil, spec.InternalServerError{Err: fmt.Sprintf("expected leave event from template builder. got: %s", event.Type())}
 	}
 
@@ -72,17 +72,17 @@ func HandleMakeLeave(input HandleMakeLeaveInput) (*HandleMakeLeaveResponse, erro
 		return nil, spec.Forbidden(err.Error())
 	}
 
-	// This ensures we send EventReferences for room version v1 and v2. We need to do this, since we're
+	// This ensures we send EventReferences for frame version v1 and v2. We need to do this, since we're
 	// returning the proto event, which isn't modified when running `Build`.
 	switch event.Version() {
-	case RoomVersionV1, RoomVersionV2:
+	case FrameVersionV1, FrameVersionV2:
 		proto.PrevEvents = toEventReference(event.PrevEventIDs())
 		proto.AuthEvents = toEventReference(event.AuthEventIDs())
 	}
 
 	makeLeaveResponse := HandleMakeLeaveResponse{
 		LeaveTemplateEvent: proto,
-		RoomVersion:        input.RoomVersion,
+		FrameVersion:        input.FrameVersion,
 	}
 	return &makeLeaveResponse, nil
 }

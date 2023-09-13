@@ -11,8 +11,7 @@ import (
 // from another homeserver.
 type BackfillClient interface {
 	// Backfill performs a backfill request to the given server.
-	// https://matrix.org/docs/spec/server_server/latest#get-matrix-federation-v1-backfill-roomid
-	Backfill(ctx context.Context, origin, server spec.ServerName, roomID string, limit int, fromEventIDs []string) (Transaction, error)
+	Backfill(ctx context.Context, origin, server spec.ServerName, frameID string, limit int, fromEventIDs []string) (Transaction, error)
 }
 
 // BackfillRequester contains the necessary functions to perform backfill requests from one server to another.
@@ -27,10 +26,10 @@ type BackfillRequester interface {
 	BackfillClient
 	// ServersAtEvent is called when trying to determine which server to request from.
 	// It returns a list of servers which can be queried for backfill requests. These servers
-	// will be servers that are in the room already. The entries at the beginning are preferred servers
+	// will be servers that are in the frame already. The entries at the beginning are preferred servers
 	// and will be tried first. An empty list will fail the request.
-	ServersAtEvent(ctx context.Context, roomID, eventID string) []spec.ServerName
-	ProvideEvents(roomVer RoomVersion, eventIDs []string) ([]PDU, error)
+	ServersAtEvent(ctx context.Context, frameID, eventID string) []spec.ServerName
+	ProvideEvents(frameVer FrameVersion, eventIDs []string) ([]PDU, error)
 }
 
 // RequestBackfill implements the server logic for making backfill requests to other servers.
@@ -48,7 +47,7 @@ type BackfillRequester interface {
 //
 // TODO: When does it make sense to return errors?
 func RequestBackfill(ctx context.Context, origin spec.ServerName, b BackfillRequester, keyRing JSONVerifier,
-	roomID string, ver RoomVersion, fromEventIDs []string, limit int, userIDForSender spec.UserIDForSender) ([]PDU, error) {
+	frameID string, ver FrameVersion, fromEventIDs []string, limit int, userIDForSender spec.UserIDForSender) ([]PDU, error) {
 
 	if len(fromEventIDs) == 0 {
 		return nil, nil
@@ -58,7 +57,7 @@ func RequestBackfill(ctx context.Context, origin spec.ServerName, b BackfillRequ
 	loader := NewEventsLoader(ver, keyRing, b, b.ProvideEvents, false)
 	// pick a server to backfill from
 	// TODO: use other event IDs and make a set out of all the returned servers?
-	servers := b.ServersAtEvent(ctx, roomID, fromEventIDs[0])
+	servers := b.ServersAtEvent(ctx, frameID, fromEventIDs[0])
 	// loop each server asking it for `limit` events. Worst case, we ask every server for `limit`
 	// events before giving up. Best case, we just ask one.
 	var lastErr error
@@ -70,7 +69,7 @@ func RequestBackfill(ctx context.Context, origin spec.ServerName, b BackfillRequ
 			return nil, fmt.Errorf("gomatrixserverlib: RequestBackfill context cancelled %w", ctx.Err())
 		}
 		// fetch some events, and try a different server if it fails
-		txn, err := b.Backfill(ctx, origin, s, roomID, limit, fromEventIDs)
+		txn, err := b.Backfill(ctx, origin, s, frameID, limit, fromEventIDs)
 		if err != nil {
 			lastErr = err
 			continue // try the next server
@@ -110,8 +109,8 @@ type backfillResponder interface {
 
 // ReceiveBackfill implements the server logic for processing backfill requests sent by a server.
 // This handles event selection via breadth-first search, as well as history visibility rules depending
-// on the state of the room at that point in time.
-func receiveBackfill(b backfillResponder, roomID string, fromEventIDs []string, limit int) (*Transaction, error) {
+// on the state of the frame at that point in time.
+func receiveBackfill(b backfillResponder, frameID string, fromEventIDs []string, limit int) (*Transaction, error) {
 	return nil, nil // TODO, unexported for now.
 }
 */

@@ -1,18 +1,3 @@
-/* Copyright 2016-2017 Vector Creations Ltd
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package xtools
 
 import (
@@ -26,31 +11,30 @@ import (
 	"golang.org/x/crypto/ed25519"
 )
 
-// CreateContent is the JSON content of a m.room.create event along with
+// CreateContent is the JSON content of a m.frame.create event along with
 // the top level keys needed for auth.
-// See https://spec.matrix.org/v1.7/client-server-api/#mroomcreate for descriptions of the fields.
 type CreateContent struct {
 	// We need the domain of the create event when checking federatability.
 	senderDomain string
-	// We need the roomID to check that events are in the same room as the create event.
-	roomID string
-	// We need the eventID to check the first join event in the room.
+	// We need the frameID to check that events are in the same frame as the create event.
+	frameID string
+	// We need the eventID to check the first join event in the frame.
 	eventID string
-	// The "m.federate" flag tells us whether the room can be federated to other servers.
+	// The "m.federate" flag tells us whether the frame can be federated to other servers.
 	Federate *bool `json:"m.federate,omitempty"`
-	// The creator of the room tells us what the default power levels are.
+	// The creator of the frame tells us what the default power levels are.
 	Creator string `json:"creator"`
-	// The version of the room. Should be treated as "1" when the key doesn't exist.
-	RoomVersion *RoomVersion `json:"room_version,omitempty"`
-	// The predecessor of the room.
-	Predecessor *PreviousRoom `json:"predecessor,omitempty"`
-	// The room type.
-	RoomType string `json:"type,omitempty"`
+	// The version of the frame. Should be treated as "1" when the key doesn't exist.
+	FrameVersion *FrameVersion `json:"frame_version,omitempty"`
+	// The predecessor of the frame.
+	Predecessor *PreviousFrame `json:"predecessor,omitempty"`
+	// The frame type.
+	FrameType string `json:"type,omitempty"`
 }
 
-// PreviousRoom is the "Previous Room" structure defined at https://matrix.org/docs/spec/client_server/r0.5.0#m-room-create
-type PreviousRoom struct {
-	RoomID  string `json:"room_id"`
+// PreviousFrame is the "Previous Frame" structure defined
+type PreviousFrame struct {
+	FrameID  string `json:"frame_id"`
 	EventID string `json:"event_id"`
 }
 
@@ -69,14 +53,14 @@ func NewCreateContentFromAuthEvents(authEvents AuthEventProvider, userIDForSende
 		err = errorf("unparseable create event content: %s", err.Error())
 		return
 	}
-	c.roomID = createEvent.RoomID()
+	c.frameID = createEvent.FrameID()
 	c.eventID = createEvent.EventID()
-	validRoomID, err := spec.NewRoomID(createEvent.RoomID())
+	validFrameID, err := spec.NewFrameID(createEvent.FrameID())
 	if err != nil {
-		err = errorf("roomID is invalid: %s", err.Error())
+		err = errorf("frameID is invalid: %s", err.Error())
 		return
 	}
-	sender, err := userIDForSender(*validRoomID, createEvent.SenderID())
+	sender, err := userIDForSender(*validFrameID, createEvent.SenderID())
 	if err != nil {
 		err = errorf("invalid sender userID: %s", err.Error())
 		return
@@ -85,7 +69,7 @@ func NewCreateContentFromAuthEvents(authEvents AuthEventProvider, userIDForSende
 	return
 }
 
-// DomainAllowed checks whether the domain is allowed in the room by the
+// DomainAllowed checks whether the domain is allowed in the frame by the
 // "m.federate" flag.
 func (c *CreateContent) DomainAllowed(domain string) error {
 	if domain == c.senderDomain {
@@ -99,11 +83,11 @@ func (c *CreateContent) DomainAllowed(domain string) error {
 		// "m.federate" flag is absent or true.
 		return nil
 	}
-	return errorf("room is unfederatable")
+	return errorf("frame is unfederatable")
 }
 
 // UserIDAllowed checks whether the domain part of the user ID is allowed in
-// the room by the "m.federate" flag.
+// the frame by the "m.federate" flag.
 func (c *CreateContent) UserIDAllowed(id spec.UserID) error {
 	return c.DomainAllowed(string(id.Domain()))
 }
@@ -123,10 +107,10 @@ func domainFromID(id string) (string, error) {
 	return parts[1], nil
 }
 
-// MemberContent is the JSON content of a m.room.member event needed for auth checks.
-// See https://matrix.org/docs/spec/client_server/r0.2.0.html#m-room-member for descriptions of the fields.
+// MemberContent is the JSON content of a m.frame.member event needed for auth checks.
+// See https://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-member for descriptions of the fields.
 type MemberContent struct {
-	// We use the membership key in order to check if the user is in the room.
+	// We use the membership key in order to check if the user is in the frame.
 	Membership  string `json:"membership"`
 	DisplayName string `json:"displayname,omitempty"`
 	AvatarURL   string `json:"avatar_url,omitempty"`
@@ -138,12 +122,12 @@ type MemberContent struct {
 	// so that their membership can be included in the auth events.
 	AuthorisedVia string `json:"join_authorised_via_users_server,omitempty"`
 
-	// The MXIDMapping used in pseudo ID rooms
+	// The MXIDMapping used in pseudo ID frames
 	MXIDMapping *MXIDMapping `json:"mxid_mapping,omitempty"`
 }
 
 type MXIDMapping struct {
-	UserRoomKey spec.SenderID                                  `json:"user_room_key"`
+	UserFrameKey spec.SenderID                                  `json:"user_frame_key"`
 	UserID      string                                         `json:"user_id"`
 	Signatures  map[spec.ServerName]map[KeyID]spec.Base64Bytes `json:"signatures,omitempty"`
 }
@@ -173,13 +157,13 @@ func (m *MXIDMapping) Sign(serverName spec.ServerName, keyID KeyID, privateKey e
 	return nil
 }
 
-// MemberThirdPartyInvite is the "Invite" structure defined at http://matrix.org/docs/spec/client_server/r0.2.0.html#m-room-member
+// MemberThirdPartyInvite is the "Invite" structure defined at http://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-member
 type MemberThirdPartyInvite struct {
 	DisplayName string                       `json:"display_name"`
 	Signed      MemberThirdPartyInviteSigned `json:"signed"`
 }
 
-// MemberThirdPartyInviteSigned is the "signed" structure defined at http://matrix.org/docs/spec/client_server/r0.2.0.html#m-room-member
+// MemberThirdPartyInviteSigned is the "signed" structure defined at http://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-member
 type MemberThirdPartyInviteSigned struct {
 	MXID       string                       `json:"mxid"`
 	Signatures map[string]map[string]string `json:"signatures"`
@@ -218,18 +202,18 @@ func NewMemberContentFromEvent(event PDU) (c MemberContent, err error) {
 	return
 }
 
-// ThirdPartyInviteContent is the JSON content of a m.room.third_party_invite event needed for auth checks.
-// See https://matrix.org/docs/spec/client_server/r0.2.0.html#m-room-third-party-invite for descriptions of the fields.
+// ThirdPartyInviteContent is the JSON content of a m.frame.third_party_invite event needed for auth checks.
+// See https://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-third-party-invite for descriptions of the fields.
 type ThirdPartyInviteContent struct {
 	DisplayName    string `json:"display_name"`
 	KeyValidityURL string `json:"key_validity_url"`
 	PublicKey      string `json:"public_key"`
-	// Public keys are used to verify the signature of a m.room.member event that
-	// came from a m.room.third_party_invite event
+	// Public keys are used to verify the signature of a m.frame.member event that
+	// came from a m.frame.third_party_invite event
 	PublicKeys []PublicKey `json:"public_keys"`
 }
 
-// PublicKey is the "PublicKeys" structure defined at https://matrix.org/docs/spec/client_server/r0.5.0#m-room-third-party-invite
+// PublicKey is the "PublicKeys" structure defined at https://matrix.org/docs/spec/client_server/r0.5.0#m-frame-third-party-invite
 type PublicKey struct {
 	PublicKey      spec.Base64Bytes `json:"public_key"`
 	KeyValidityURL string           `json:"key_validity_url"`
@@ -253,8 +237,8 @@ func NewThirdPartyInviteContentFromAuthEvents(authEvents AuthEventProvider, toke
 	return
 }
 
-// HistoryVisibilityContent is the JSON content of a m.room.history_visibility event.
-// See https://matrix.org/docs/spec/client_server/r0.6.0#room-history-visibility for descriptions of the fields.
+// HistoryVisibilityContent is the JSON content of a m.frame.history_visibility event.
+// See https://matrix.org/docs/spec/client_server/r0.6.0#frame-history-visibility for descriptions of the fields.
 type HistoryVisibilityContent struct {
 	HistoryVisibility HistoryVisibility `json:"history_visibility"`
 }
@@ -315,17 +299,17 @@ var hisVisIntToStringMapping = map[uint8]HistoryVisibility{
 	4: HistoryVisibilityJoined,
 }
 
-// JoinRuleContent is the JSON content of a m.room.join_rules event needed for auth checks.
-// See  https://matrix.org/docs/spec/client_server/r0.2.0.html#m-room-join-rules for descriptions of the fields.
+// JoinRuleContent is the JSON content of a m.frame.join_rules event needed for auth checks.
+// See  https://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-join-rules for descriptions of the fields.
 type JoinRuleContent struct {
-	// We use the join_rule key to check whether join m.room.member events are allowed.
+	// We use the join_rule key to check whether join m.frame.member events are allowed.
 	JoinRule string                     `json:"join_rule"`
 	Allow    []JoinRuleContentAllowRule `json:"allow,omitempty"`
 }
 
 type JoinRuleContentAllowRule struct {
 	Type   string `json:"type"`
-	RoomID string `json:"room_id"`
+	FrameID string `json:"frame_id"`
 }
 
 // NewJoinRuleContentFromAuthEvents loads the join rule content from the join rules event in the auth event.
@@ -349,12 +333,12 @@ func NewJoinRuleContentFromAuthEvents(authEvents AuthEventProvider) (c JoinRuleC
 	return
 }
 
-// PowerLevelContent is the JSON content of a m.room.power_levels event needed for auth checks.
+// PowerLevelContent is the JSON content of a m.frame.power_levels event needed for auth checks.
 // Typically the user calls NewPowerLevelContentFromAuthEvents instead of
 // unmarshalling the content directly from JSON so defaults can be applied.
 // However, the JSON key names are still preserved so it's possible to marshal
 // the struct into JSON easily.
-// See https://matrix.org/docs/spec/client_server/r0.2.0.html#m-room-power-levels for descriptions of the fields.
+// See https://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-power-levels for descriptions of the fields.
 type PowerLevelContent struct {
 	Ban           int64            `json:"ban"`
 	Invite        int64            `json:"invite"`
@@ -368,7 +352,7 @@ type PowerLevelContent struct {
 	Notifications map[string]int64 `json:"notifications"`
 }
 
-// UserLevel returns the power level a user has in the room.
+// UserLevel returns the power level a user has in the frame.
 func (c *PowerLevelContent) UserLevel(senderID spec.SenderID) int64 {
 	level, ok := c.Users[string(senderID)]
 	if ok {
@@ -377,11 +361,11 @@ func (c *PowerLevelContent) UserLevel(senderID spec.SenderID) int64 {
 	return c.UsersDefault
 }
 
-// EventLevel returns the power level needed to send an event in the room.
+// EventLevel returns the power level needed to send an event in the frame.
 func (c *PowerLevelContent) EventLevel(eventType string, isState bool) int64 {
-	if eventType == spec.MRoomThirdPartyInvite {
+	if eventType == spec.MFrameThirdPartyInvite {
 		// Special case third_party_invite events to have the same level as
-		// m.room.member invite events.
+		// m.frame.member invite events.
 		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L182
 		return c.Invite
 	}
@@ -395,14 +379,14 @@ func (c *PowerLevelContent) EventLevel(eventType string, isState bool) int64 {
 	return c.EventsDefault
 }
 
-// UserLevel returns the power level a user has in the room.
+// UserLevel returns the power level a user has in the frame.
 func (c *PowerLevelContent) NotificationLevel(notification string) int64 {
 	level, ok := c.Notifications[notification]
 	if ok {
 		return level
 	}
-	// https://matrix.org/docs/spec/client_server/r0.6.1#m-room-power-levels
-	// room	integer	The level required to trigger an @room notification. Defaults to 50 if unspecified.
+	// https://matrix.org/docs/spec/client_server/r0.6.1#m-frame-power-levels
+	// frame	integer	The level required to trigger an @frame notification. Defaults to 50 if unspecified.
 	return 50
 }
 
@@ -434,7 +418,7 @@ func NewPowerLevelContentFromAuthEvents(authEvents AuthEventProvider, creatorUse
 }
 
 // Defaults sets the power levels to their default values.
-// See https://spec.matrix.org/v1.1/client-server-api/#mroompower_levels for defaults.
+// See https://spec.matrix.org/v1.1/client-server-api/#mframepower_levels for defaults.
 func (c *PowerLevelContent) Defaults() {
 	c.Invite = 50
 	c.Ban = 50
@@ -444,7 +428,7 @@ func (c *PowerLevelContent) Defaults() {
 	c.EventsDefault = 0
 	c.StateDefault = 50
 	c.Notifications = map[string]int64{
-		"room": 50,
+		"frame": 50,
 	}
 }
 
@@ -453,7 +437,7 @@ func NewPowerLevelContentFromEvent(event PDU) (c PowerLevelContent, err error) {
 	// Set the levels to their default values.
 	c.Defaults()
 
-	verImpl, err := GetRoomVersion(event.Version())
+	verImpl, err := GetFrameVersion(event.Version())
 	if err != nil {
 		return c, err
 	}

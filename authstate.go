@@ -9,22 +9,22 @@ import (
 	"github.com/withqb/xutil"
 )
 
-// StateProvider is capable of returning the room state at any point in time.
+// StateProvider is capable of returning the frame state at any point in time.
 type StateProvider interface {
 	// StateIDsBeforeEvent returns a list of state event IDs for the event ID provided, which represent the entire
-	// room state before that event.
+	// frame state before that event.
 	StateIDsBeforeEvent(ctx context.Context, event PDU) ([]string, error)
-	// StateBeforeEvent returns the state of the room before the given event. `eventIDs` will be populated with the output
+	// StateBeforeEvent returns the state of the frame before the given event. `eventIDs` will be populated with the output
 	// of StateIDsAtEvent to aid in event retrieval.
-	StateBeforeEvent(ctx context.Context, roomVer RoomVersion, event PDU, eventIDs []string) (map[string]PDU, error)
+	StateBeforeEvent(ctx context.Context, frameVer FrameVersion, event PDU, eventIDs []string) (map[string]PDU, error)
 }
 
 type FederatedStateClient interface {
 	LookupState(
-		ctx context.Context, origin, s spec.ServerName, roomID, eventID string, roomVersion RoomVersion,
+		ctx context.Context, origin, s spec.ServerName, frameID, eventID string, frameVersion FrameVersion,
 	) (res StateResponse, err error)
 	LookupStateIDs(
-		ctx context.Context, origin, s spec.ServerName, roomID, eventID string,
+		ctx context.Context, origin, s spec.ServerName, frameID, eventID string,
 	) (res StateIDResponse, err error)
 }
 
@@ -56,7 +56,7 @@ type FederatedStateProvider struct {
 	// The remote server to ask.
 	Origin spec.ServerName
 	Server spec.ServerName
-	// Set to true to remember the auth event IDs for the room at various states
+	// Set to true to remember the auth event IDs for the frame at various states
 	RememberAuthEvents bool
 	// Maps which are populated if AuthEvents is true, so you know which events are required to do PDU checks.
 	EventToAuthEventIDs map[string][]string
@@ -65,7 +65,7 @@ type FederatedStateProvider struct {
 
 // StateIDsBeforeEvent implements StateProvider
 func (p *FederatedStateProvider) StateIDsBeforeEvent(ctx context.Context, event PDU) ([]string, error) {
-	res, err := p.FedClient.LookupStateIDs(ctx, p.Origin, p.Server, event.RoomID(), event.EventID())
+	res, err := p.FedClient.LookupStateIDs(ctx, p.Origin, p.Server, event.FrameID(), event.EventID())
 	if err != nil {
 		return nil, err
 	}
@@ -76,18 +76,18 @@ func (p *FederatedStateProvider) StateIDsBeforeEvent(ctx context.Context, event 
 }
 
 // StateBeforeEvent implements StateProvider
-func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, roomVer RoomVersion, event PDU, eventIDs []string) (map[string]PDU, error) {
-	res, err := p.FedClient.LookupState(ctx, p.Origin, p.Server, event.RoomID(), event.EventID(), roomVer)
+func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, frameVer FrameVersion, event PDU, eventIDs []string) (map[string]PDU, error) {
+	res, err := p.FedClient.LookupState(ctx, p.Origin, p.Server, event.FrameID(), event.EventID(), frameVer)
 	if err != nil {
 		return nil, err
 	}
-	roomVerImpl, err := GetRoomVersion(roomVer)
+	frameVerImpl, err := GetFrameVersion(frameVer)
 	if err != nil {
 		return nil, err
 	}
 	if p.RememberAuthEvents {
 		for _, js := range res.GetAuthEvents() {
-			event, err := roomVerImpl.NewEventFromUntrustedJSON(js)
+			event, err := frameVerImpl.NewEventFromUntrustedJSON(js)
 			if err != nil {
 				continue
 			}
@@ -97,7 +97,7 @@ func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, roomVer R
 
 	result := make(map[string]PDU)
 	for _, js := range res.GetStateEvents() {
-		event, err := roomVerImpl.NewEventFromUntrustedJSON(js)
+		event, err := frameVerImpl.NewEventFromUntrustedJSON(js)
 		if err != nil {
 			continue
 		}
@@ -106,13 +106,13 @@ func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, roomVer R
 	return result, nil
 }
 
-// VerifyAuthRulesAtState will check that the auth_events in the given event are valid at the state of the room before that event.
+// VerifyAuthRulesAtState will check that the auth_events in the given event are valid at the state of the frame before that event.
 //
 // This implements Step 5 of https://matrix.org/docs/spec/server_server/latest#checks-performed-on-receipt-of-a-pdu
 // "Passes authorization rules based on the state at the event, otherwise it is rejected."
 //
 // If `allowValidation` is true:
-// This check initially attempts to validate that the auth_events are in the target room state, and if they are it will short-circuit
+// This check initially attempts to validate that the auth_events are in the target frame state, and if they are it will short-circuit
 // and succeed early. THIS IS ONLY VALID IF STEP 4 HAS BEEN PREVIOUSLY APPLIED. Otherwise, a malicious server could lie and say that
 // no auth_events are required and this function will short-circuit and allow it.
 func VerifyAuthRulesAtState(ctx context.Context, sp StateProvider, eventToVerify PDU, allowValidation bool, userIDForSender spec.UserIDForSender) error {
@@ -145,14 +145,14 @@ func VerifyAuthRulesAtState(ctx context.Context, sp StateProvider, eventToVerify
 	}
 
 	// slow path: fetch the events at this state and check auth
-	roomState, err := sp.StateBeforeEvent(ctx, eventToVerify.Version(), eventToVerify, stateIDs)
+	frameState, err := sp.StateBeforeEvent(ctx, eventToVerify.Version(), eventToVerify, stateIDs)
 	if err != nil {
 		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: cannot get state at event %s: %w", eventToVerify.EventID(), err)
 	}
 	if ctx.Err() != nil {
 		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: context cancelled: %w", ctx.Err())
 	}
-	if err := checkAllowedByAuthEvents(eventToVerify, roomState, nil, userIDForSender); err != nil {
+	if err := checkAllowedByAuthEvents(eventToVerify, frameState, nil, userIDForSender); err != nil {
 		return fmt.Errorf(
 			"gomatrixserverlib.VerifyAuthRulesAtState: event %s is not allowed at state %s : %w",
 			eventToVerify.EventID(), eventToVerify.EventID(), err,
@@ -228,12 +228,12 @@ func checkAllowedByAuthEvents(
 // auth events (first return parameter) and state events (second
 // return parameter). Does not alter any input args.
 func CheckStateResponse(
-	ctx context.Context, r StateResponse, roomVersion RoomVersion,
+	ctx context.Context, r StateResponse, frameVersion FrameVersion,
 	keyRing JSONVerifier, missingAuth EventProvider, userIDForSender spec.UserIDForSender,
 ) ([]PDU, []PDU, error) {
 	logger := xutil.GetLogger(ctx)
-	authEvents := r.GetAuthEvents().UntrustedEvents(roomVersion)
-	stateEvents := r.GetStateEvents().UntrustedEvents(roomVersion)
+	authEvents := r.GetAuthEvents().UntrustedEvents(frameVersion)
+	stateEvents := r.GetStateEvents().UntrustedEvents(frameVersion)
 	var allEvents []PDU
 	for _, event := range authEvents {
 		if event.StateKey() == nil {
@@ -259,7 +259,7 @@ func CheckStateResponse(
 	}
 
 	// Check if the events pass signature checks.
-	logger.Infof("Checking event signatures for %d events of room state", len(allEvents))
+	logger.Infof("Checking event signatures for %d events of frame state", len(allEvents))
 	errors := VerifyAllEventSignatures(ctx, allEvents, keyRing, userIDForSender)
 	if len(errors) != len(allEvents) {
 		return nil, nil, fmt.Errorf("expected %d errors but got %d", len(allEvents), len(errors))
@@ -313,14 +313,14 @@ func CheckStateResponse(
 }
 
 // Check that a response to /send_join is valid. If it is then it
-// returns a reference to the RespState that contains the room state
+// returns a reference to the RespState that contains the frame state
 // excluding any events that failed signature checks.
 // This checks that it would be valid as a response to /state.
 // This also checks that the join event is allowed by the state.
 // This function mutates the RespSendJoin to remove any events from
 // AuthEvents or StateEvents that do not have valid signatures.
 func CheckSendJoinResponse(
-	ctx context.Context, roomVersion RoomVersion, r StateResponse,
+	ctx context.Context, frameVersion FrameVersion, r StateResponse,
 	keyRing JSONVerifier, joinEvent PDU,
 	missingAuth EventProvider, userIDForSender spec.UserIDForSender,
 ) (StateResponse, error) {
@@ -329,7 +329,7 @@ func CheckSendJoinResponse(
 	//
 	// The response to /send_join has the same data as a response to /state
 	// and the checks for a response to /state also apply.
-	authEvents, stateEvents, err := CheckStateResponse(ctx, r, roomVersion, keyRing, missingAuth, userIDForSender)
+	authEvents, stateEvents, err := CheckStateResponse(ctx, r, frameVersion, keyRing, missingAuth, userIDForSender)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +371,7 @@ func CheckSendJoinResponse(
 	// Now check that the join event is valid against the supplied state.
 	if err := Allowed(joinEvent, &authEventProvider, userIDForSender); err != nil {
 		return nil, fmt.Errorf(
-			"gomatrixserverlib: event with ID %q is not allowed by the current room state: %w",
+			"gomatrixserverlib: event with ID %q is not allowed by the current frame state: %w",
 			joinEvent.EventID(), err,
 		)
 	}
@@ -385,9 +385,9 @@ func CheckSendJoinResponse(
 // LineariseStateResponse combines the auth events and the state events and returns
 // them in an order where every event comes after its auth events.
 // Each event will only appear once in the output list.
-func LineariseStateResponse(roomVersion RoomVersion, r StateResponse) []PDU {
-	authEvents := r.GetAuthEvents().UntrustedEvents(roomVersion)
-	stateEvents := r.GetStateEvents().UntrustedEvents(roomVersion)
+func LineariseStateResponse(frameVersion FrameVersion, r StateResponse) []PDU {
+	authEvents := r.GetAuthEvents().UntrustedEvents(frameVersion)
+	stateEvents := r.GetStateEvents().UntrustedEvents(frameVersion)
 	eventsByID := make(map[string]PDU, len(authEvents)+len(stateEvents))
 	for i, event := range authEvents {
 		eventsByID[event.EventID()] = authEvents[i]

@@ -2,6 +2,11 @@ module github.com/withqb/xtools
 
 go 1.21
 
+replace (
+github.com/withqb/xcore => ../xcore
+github.com/withqb/xutil => ../xutil
+)
+
 require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/tidwall/gjson v1.16.0

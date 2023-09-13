@@ -68,7 +68,7 @@ func StrictValiditySignatureCheck(atTs, validUntil spec.Timestamp) bool {
 	}
 	// Servers MUST use the lesser of valid_until_ts and 7 days into the
 	// future when determining if a key is valid.
-	// https://matrix.org/docs/spec/rooms/v5#signing-key-validity-period
+	// https://matrix.org/docs/spec/frames/v5#signing-key-validity-period
 	sevenDaysFuture := time.Now().Add(time.Hour * 24 * 7)
 	validUntilTS := validUntil.Time()
 	if validUntilTS.After(sevenDaysFuture) {

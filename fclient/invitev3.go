@@ -6,18 +6,18 @@ import (
 	"github.com/withqb/xtools"
 )
 
-func NewInviteV3Request(event xtools.ProtoEvent, version xtools.RoomVersion, state []xtools.InviteStrippedState) (
+func NewInviteV3Request(event xtools.ProtoEvent, version xtools.FrameVersion, state []xtools.InviteStrippedState) (
 	request InviteV3Request, err error,
 ) {
-	if !xtools.KnownRoomVersion(version) {
-		err = xtools.UnsupportedRoomVersionError{
+	if !xtools.KnownFrameVersion(version) {
+		err = xtools.UnsupportedFrameVersionError{
 			Version: version,
 		}
 		return
 	}
 	request.fields.inviteV2RequestHeaders = inviteV2RequestHeaders{
-		RoomVersion:     version,
-		InviteRoomState: state,
+		FrameVersion:     version,
+		InviteFrameState: state,
 	}
 	request.fields.Event = event
 	return
@@ -50,13 +50,13 @@ func (i *InviteV3Request) Event() xtools.ProtoEvent {
 	return i.fields.Event
 }
 
-// RoomVersion returns the room version of the invited room.
-func (i *InviteV3Request) RoomVersion() xtools.RoomVersion {
-	return i.fields.RoomVersion
+// FrameVersion returns the frame version of the invited frame.
+func (i *InviteV3Request) FrameVersion() xtools.FrameVersion {
+	return i.fields.FrameVersion
 }
 
-// InviteRoomState returns stripped state events for the room, containing
-// enough information for the client to identify the room.
-func (i *InviteV3Request) InviteRoomState() []xtools.InviteStrippedState {
-	return i.fields.InviteRoomState
+// InviteFrameState returns stripped state events for the frame, containing
+// enough information for the client to identify the frame.
+func (i *InviteV3Request) InviteFrameState() []xtools.InviteStrippedState {
+	return i.fields.InviteFrameState
 }

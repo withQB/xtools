@@ -17,16 +17,16 @@ type RespSend struct {
 	PDUs map[string]PDUResult `json:"pdus"`
 }
 
-// A PDUResult is the result of processing a matrix room event.
+// A PDUResult is the result of processing a matrix frame event.
 type PDUResult struct {
 	// If not empty then this is a human readable description of a problem
 	// encountered processing an event.
 	Error string `json:"error,omitempty"`
 }
 
-// A RespStateIDs is the content of a response to GET /_matrix/federation/v1/state_ids/{roomID}/{eventID}
+// A RespStateIDs is the content of a response to GET /_matrix/federation/v1/state_ids/{frameID}/{eventID}
 type RespStateIDs struct {
-	// A list of state event IDs for the state of the room before the requested event.
+	// A list of state event IDs for the state of the frame before the requested event.
 	StateEventIDs []string `json:"pdu_ids"`
 	// A list of event IDs needed to authenticate the state events.
 	AuthEventIDs []string `json:"auth_chain_ids"`
@@ -40,9 +40,9 @@ func (r RespStateIDs) GetAuthEventIDs() []string {
 	return r.AuthEventIDs
 }
 
-// A RespState is the content of a response to GET /_matrix/federation/v1/state/{roomID}/{eventID}
+// A RespState is the content of a response to GET /_matrix/federation/v1/state/{frameID}/{eventID}
 type RespState struct {
-	// A list of events giving the state of the room before the request event.
+	// A list of events giving the state of the frame before the request event.
 	StateEvents xtools.EventJSONs `json:"pdus"`
 	// A list of events needed to authenticate the state events.
 	AuthEvents xtools.EventJSONs `json:"auth_chain"`
@@ -56,18 +56,18 @@ func (r *RespState) GetAuthEvents() xtools.EventJSONs {
 	return r.AuthEvents
 }
 
-// A RespPeek is the content of a response to GET /_matrix/federation/v1/peek/{roomID}/{peekID}
+// A RespPeek is the content of a response to GET /_matrix/federation/v1/peek/{frameID}/{peekID}
 type RespPeek struct {
 	// How often should we renew the peek?
 	RenewalInterval int64 `json:"renewal_interval"`
-	// A list of events giving the state of the room at the point of the request
+	// A list of events giving the state of the frame at the point of the request
 	StateEvents xtools.EventJSONs `json:"state"`
 	// A list of events needed to authenticate the state events.
 	AuthEvents xtools.EventJSONs `json:"auth_chain"`
-	// The room version that we're trying to peek.
-	RoomVersion xtools.RoomVersion `json:"room_version"`
+	// The frame version that we're trying to peek.
+	FrameVersion xtools.FrameVersion `json:"frame_version"`
 	// The ID of the event whose state snapshot this is - i.e. the
-	// most recent forward extremity in the room.
+	// most recent forward extremity in the frame.
 	LatestEvent xtools.PDU `json:"latest_event"`
 }
 
@@ -80,7 +80,7 @@ func (r *RespPeek) GetAuthEvents() xtools.EventJSONs {
 }
 
 // MissingEvents represents a request for missing events.
-// https://matrix.org/docs/spec/server_server/r0.1.3#post-matrix-federation-v1-get-missing-events-roomid
+// https://matrix.org/docs/spec/server_server/r0.1.3#post-matrix-federation-v1-get-missing-events-frameid
 type MissingEvents struct {
 	// The maximum number of events to retrieve.
 	Limit int `json:"limit"`
@@ -92,48 +92,48 @@ type MissingEvents struct {
 	LatestEvents []string `json:"latest_events"`
 }
 
-// A RespMissingEvents is the content of a response to GET /_matrix/federation/v1/get_missing_events/{roomID}
+// A RespMissingEvents is the content of a response to GET /_matrix/federation/v1/get_missing_events/{frameID}
 type RespMissingEvents struct {
 	// The returned set of missing events.
 	Events xtools.EventJSONs `json:"events"`
 }
 
-// RespPublicRooms is the content of a response to GET /_matrix/federation/v1/publicRooms
-type RespPublicRooms struct {
-	// A paginated chunk of public rooms.
-	Chunk []PublicRoom `json:"chunk"`
+// RespPublicFrames is the content of a response to GET /_matrix/federation/v1/publicFrames
+type RespPublicFrames struct {
+	// A paginated chunk of public frames.
+	Chunk []PublicFrame `json:"chunk"`
 	// A pagination token for the response. The absence of this token means there are no more results to fetch and the client should stop paginating.
 	NextBatch string `json:"next_batch,omitempty"`
 	// A pagination token that allows fetching previous results. The absence of this token means there are no results before this batch, i.e. this is the first batch.
 	PrevBatch string `json:"prev_batch,omitempty"`
-	// An estimate on the total number of public rooms, if the server has an estimate.
-	TotalRoomCountEstimate int `json:"total_room_count_estimate,omitempty"`
+	// An estimate on the total number of public frames, if the server has an estimate.
+	TotalFrameCountEstimate int `json:"total_frame_count_estimate,omitempty"`
 }
 
-// PublicRoom stores the info of a room returned by
-// GET /_matrix/federation/v1/publicRooms
-type PublicRoom struct {
-	// Aliases of the room. May be empty.
+// PublicFrame stores the info of a frame returned by
+// GET /_matrix/federation/v1/publicFrames
+type PublicFrame struct {
+	// Aliases of the frame. May be empty.
 	Aliases []string `json:"aliases,omitempty"`
-	// The canonical alias of the room, if any.
+	// The canonical alias of the frame, if any.
 	CanonicalAlias string `json:"canonical_alias,omitempty"`
-	// The name of the room, if any.
+	// The name of the frame, if any.
 	Name string `json:"name,omitempty"`
-	// The number of members joined to the room.
+	// The number of members joined to the frame.
 	JoinedMembersCount int `json:"num_joined_members"`
-	// The ID of the room.
-	RoomID string `json:"room_id"`
-	// The topic of the room, if any.
+	// The ID of the frame.
+	FrameID string `json:"frame_id"`
+	// The topic of the frame, if any.
 	Topic string `json:"topic,omitempty"`
-	// Whether the room may be viewed by guest users without joining.
+	// Whether the frame may be viewed by guest users without joining.
 	WorldReadable bool `json:"world_readable"`
-	// Whether guest users may join the room and participate in it. If they can, they will be subject to ordinary power level rules like any other user.
+	// Whether guest users may join the frame and participate in it. If they can, they will be subject to ordinary power level rules like any other user.
 	GuestCanJoin bool `json:"guest_can_join"`
-	// The URL for the room's avatar, if one is set.
+	// The URL for the frame's avatar, if one is set.
 	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
-// A RespEventAuth is the content of a response to GET /_matrix/federation/v1/event_auth/{roomID}/{eventID}
+// A RespEventAuth is the content of a response to GET /_matrix/federation/v1/event_auth/{frameID}/{eventID}
 type RespEventAuth struct {
 	// A list of events needed to authenticate the state events.
 	AuthEvents xtools.EventJSONs `json:"auth_chain"`
@@ -219,13 +219,13 @@ func (r RespPeek) MarshalJSON() ([]byte, error) {
 		RenewalInterval int64              `json:"renewal_interval"`
 		StateEvents     xtools.EventJSONs  `json:"state"`
 		AuthEvents      xtools.EventJSONs  `json:"auth_chain"`
-		RoomVersion     xtools.RoomVersion `json:"room_version"`
+		FrameVersion     xtools.FrameVersion `json:"frame_version"`
 		LatestEvent     xtools.PDU         `json:"latest_event"`
 	}{
 		RenewalInterval: r.RenewalInterval,
 		StateEvents:     r.StateEvents,
 		AuthEvents:      r.AuthEvents,
-		RoomVersion:     r.RoomVersion,
+		FrameVersion:     r.FrameVersion,
 		LatestEvent:     r.LatestEvent,
 	})
 }
@@ -244,26 +244,26 @@ func (r RespState) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// A RespMakeJoin is the content of a response to GET /_matrix/federation/v2/make_join/{roomID}/{userID}
+// A RespMakeJoin is the content of a response to GET /_matrix/federation/v2/make_join/{frameID}/{userID}
 type RespMakeJoin struct {
-	// An incomplete m.room.member event for a user on the requesting server
+	// An incomplete m.frame.member event for a user on the requesting server
 	// generated by the responding server.
-	// See https://matrix.org/docs/spec/server_server/unstable.html#joining-rooms
+	// See https://matrix.org/docs/spec/server_server/unstable.html#joining-frames
 	JoinEvent   xtools.ProtoEvent  `json:"event"`
-	RoomVersion xtools.RoomVersion `json:"room_version"`
+	FrameVersion xtools.FrameVersion `json:"frame_version"`
 }
 
 func (r *RespMakeJoin) GetJoinEvent() xtools.ProtoEvent {
 	return r.JoinEvent
 }
 
-func (r *RespMakeJoin) GetRoomVersion() xtools.RoomVersion {
-	return r.RoomVersion
+func (r *RespMakeJoin) GetFrameVersion() xtools.FrameVersion {
+	return r.FrameVersion
 }
 
-// A RespSendJoin is the content of a response to PUT /_matrix/federation/v2/send_join/{roomID}/{eventID}
+// A RespSendJoin is the content of a response to PUT /_matrix/federation/v2/send_join/{frameID}/{eventID}
 type RespSendJoin struct {
-	// A list of events giving the state of the room before the request event.
+	// A list of events giving the state of the frame before the request event.
 	StateEvents xtools.EventJSONs `json:"state"`
 	// A list of events needed to authenticate the state events.
 	AuthEvents xtools.EventJSONs `json:"auth_chain"`
@@ -274,8 +274,8 @@ type RespSendJoin struct {
 	Event spec.RawJSON `json:"event,omitempty"`
 	// true if the state is incomplete
 	MembersOmitted bool `json:"members_omitted"`
-	// a list of servers in the room. Only returned if partial_state is set.
-	ServersInRoom []string `json:"servers_in_room"`
+	// a list of servers in the frame. Only returned if partial_state is set.
+	ServersInFrame []string `json:"servers_in_frame"`
 }
 
 func (r *RespSendJoin) GetStateEvents() xtools.EventJSONs {
@@ -298,8 +298,8 @@ func (r *RespSendJoin) GetMembersOmitted() bool {
 	return r.MembersOmitted
 }
 
-func (r *RespSendJoin) GetServersInRoom() []string {
-	return r.ServersInRoom
+func (r *RespSendJoin) GetServersInFrame() []string {
+	return r.ServersInFrame
 }
 
 // MarshalJSON implements json.Marshaller
@@ -324,24 +324,24 @@ func (r RespSendJoin) MarshalJSON() ([]byte, error) {
 	partialJoinFields := respSendJoinPartialStateFields{
 		respSendJoinFields: fields,
 		MembersOmitted:     true,
-		ServersInRoom:      r.ServersInRoom,
+		ServersInFrame:      r.ServersInFrame,
 	}
 	return json.Marshal(partialJoinFields)
 }
 
-// A RespSendKnock is the content of a response to PUT /_matrix/federation/v2/send_knock/{roomID}/{eventID}
+// A RespSendKnock is the content of a response to PUT /_matrix/federation/v2/send_knock/{frameID}/{eventID}
 type RespSendKnock struct {
-	// A list of stripped state events to help the initiator of the knock identify the room.
-	KnockRoomState []xtools.InviteStrippedState `json:"knock_room_state"`
+	// A list of stripped state events to help the initiator of the knock identify the frame.
+	KnockFrameState []xtools.InviteStrippedState `json:"knock_frame_state"`
 }
 
-// A RespMakeKnock is the content of a response to GET /_matrix/federation/v2/make_knock/{roomID}/{userID}
+// A RespMakeKnock is the content of a response to GET /_matrix/federation/v2/make_knock/{frameID}/{userID}
 type RespMakeKnock struct {
-	// An incomplete m.room.member event for a user on the requesting server
+	// An incomplete m.frame.member event for a user on the requesting server
 	// generated by the responding server.
-	// See https://spec.matrix.org/v1.3/server-server-api/#knocking-upon-a-room
+	// See https://spec.matrix.org/v1.3/server-server-api/#knocking-upon-a-frame
 	KnockEvent  xtools.ProtoEvent  `json:"event"`
-	RoomVersion xtools.RoomVersion `json:"room_version"`
+	FrameVersion xtools.FrameVersion `json:"frame_version"`
 }
 
 // respSendJoinFields is an intermediate struct used in RespSendJoin.MarshalJSON
@@ -357,28 +357,28 @@ type respSendJoinFields struct {
 type respSendJoinPartialStateFields struct {
 	respSendJoinFields
 	MembersOmitted bool     `json:"members_omitted"`
-	ServersInRoom  []string `json:"servers_in_room"`
+	ServersInFrame  []string `json:"servers_in_frame"`
 }
 
-// A RespMakeLeave is the content of a response to GET /_matrix/federation/v2/make_leave/{roomID}/{userID}
+// A RespMakeLeave is the content of a response to GET /_matrix/federation/v2/make_leave/{frameID}/{userID}
 type RespMakeLeave struct {
-	// An incomplete m.room.member event for a user on the requesting server
+	// An incomplete m.frame.member event for a user on the requesting server
 	// generated by the responding server.
-	// See https://matrix.org/docs/spec/server_server/r0.1.1.html#get-matrix-federation-v1-make-leave-roomid-userid
+	// See https://matrix.org/docs/spec/server_server/r0.1.1.html#get-matrix-federation-v1-make-leave-frameid-userid
 	LeaveEvent xtools.ProtoEvent `json:"event"`
-	// The room version that we're trying to leave.
-	RoomVersion xtools.RoomVersion `json:"room_version"`
+	// The frame version that we're trying to leave.
+	FrameVersion xtools.FrameVersion `json:"frame_version"`
 }
 
 // A RespDirectory is the content of a response to GET  /_matrix/federation/v1/query/directory
-// This is returned when looking up a room alias from a remote server.
+// This is returned when looking up a frame alias from a remote server.
 // See https://matrix.org/docs/spec/server_server/unstable.html#directory
 type RespDirectory struct {
-	// The matrix room ID the room alias corresponds to.
-	RoomID string `json:"room_id"`
+	// The matrix frame ID the frame alias corresponds to.
+	FrameID string `json:"frame_id"`
 	// A list of matrix servers that the directory server thinks could be used
-	// to join the room. The joining server may need to try multiple servers
-	// before it finds one that it can use to join the room.
+	// to join the frame. The joining server may need to try multiple servers
+	// before it finds one that it can use to join the frame.
 	Servers []spec.ServerName `json:"servers"`
 }
 
@@ -388,7 +388,7 @@ type RespProfile struct {
 	AvatarURL   string `json:"avatar_url,omitempty"`
 }
 
-// RespInvite is the content of a response to PUT /_matrix/federation/v1/invite/{roomID}/{eventID}
+// RespInvite is the content of a response to PUT /_matrix/federation/v1/invite/{frameID}/{eventID}
 type RespInvite struct {
 	// The invite event signed by recipient server.
 	Event spec.RawJSON `json:"event"`
@@ -422,7 +422,7 @@ type respInviteFields struct {
 	Event spec.RawJSON `json:"event"`
 }
 
-// RespInvite is the content of a response to PUT /_matrix/federation/v2/invite/{roomID}/{eventID}
+// RespInvite is the content of a response to PUT /_matrix/federation/v2/invite/{frameID}/{eventID}
 type RespInviteV2 struct {
 	// The invite event signed by recipient server.
 	Event spec.RawJSON `json:"event"`
@@ -528,24 +528,24 @@ type MSC2836EventRelationshipsResponse struct {
 	AuthChain xtools.EventJSONs `json:"auth_chain"`
 }
 
-// RoomHierarchyRoom represents a public room with additional metadata on the space directory
-type RoomHierarchyRoom struct {
-	PublicRoom
-	ChildrenState  []RoomHierarchyStrippedEvent `json:"children_state"`
-	AllowedRoomIDs []string                     `json:"allowed_room_ids,omitempty"`
-	RoomType       string                       `json:"room_type"`
+// FrameHierarchyFrame represents a public frame with additional metadata on the space directory
+type FrameHierarchyFrame struct {
+	PublicFrame
+	ChildrenState  []FrameHierarchyStrippedEvent `json:"children_state"`
+	AllowedFrameIDs []string                     `json:"allowed_frame_ids,omitempty"`
+	FrameType       string                       `json:"frame_type"`
 }
 
-// RoomHierarchyResponse is the HTTP response body for the federation /unstable/spaces/{roomID} endpoint
+// FrameHierarchyResponse is the HTTP response body for the federation /unstable/spaces/{frameID} endpoint
 // See https://github.com/matrix-org/matrix-doc/pull/2946
-type RoomHierarchyResponse struct {
-	Room                 RoomHierarchyRoom   `json:"room"`
-	Children             []RoomHierarchyRoom `json:"children"`
+type FrameHierarchyResponse struct {
+	Frame                 FrameHierarchyFrame   `json:"frame"`
+	Children             []FrameHierarchyFrame `json:"children"`
 	InaccessibleChildren []string            `json:"inaccessible_children"`
 }
 
-// RoomHierarchyStrippedEvent is the format of events returned in the HTTP response body
-type RoomHierarchyStrippedEvent struct {
+// FrameHierarchyStrippedEvent is the format of events returned in the HTTP response body
+type FrameHierarchyStrippedEvent struct {
 	Type           string          `json:"type"`
 	StateKey       string          `json:"state_key"`
 	Content        json.RawMessage `json:"content"`

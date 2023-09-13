@@ -65,7 +65,7 @@ func (c *DNSCache) lookup(ctx context.Context, name string) (*dnsCacheEntry, boo
 	defer c.mutex.Unlock()
 
 	// If we've hit, or exceed somehow, the maximum size of the cache
-	// then we will need to evict the oldest entries to make room.
+	// then we will need to evict the oldest entries to make frame.
 	for len(c.entries) >= c.size {
 		name, ts := "", time.Now().Add(c.duration)
 		for n, e := range c.entries {

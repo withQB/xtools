@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	errNoWellKnown = errors.New("No .well-known found")
+	errNoWellKnown = errors.New("no .well-known found")
 )
 
 const WellKnownMaxSize = 50 * 1024 // 50KB
@@ -122,7 +122,7 @@ func LookupWellKnown(ctx context.Context, serverNameType spec.ServerName) (*Well
 	}
 
 	if wellKnownResponse.NewAddress == "" {
-		return nil, errors.New("No m.server key found in well-known response")
+		return nil, errors.New("no m.server key found in well-known response")
 	}
 
 	// Return result

@@ -1,18 +1,3 @@
-/* Copyright 2017 Vector Creations Ltd
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package xtools
 
 import (
@@ -78,7 +63,7 @@ type stateResolver struct {
 	// The list of resolved events.
 	// This will contain one entry for each conflicted event type and state key.
 	result []PDU
-	roomID string
+	frameID string
 	valid  bool
 }
 
@@ -121,24 +106,24 @@ func (r *stateResolver) addConflicted(events []PDU) { // nolint: gocyclo
 		// By default we add the event to a block in the others list.
 		blockList := &r.others
 		switch key.eventType {
-		case spec.MRoomCreate:
+		case spec.MFrameCreate:
 			if key.stateKey == "" {
 				r.creates = append(r.creates, event)
 				continue
 			}
-		case spec.MRoomPowerLevels:
+		case spec.MFramePowerLevels:
 			if key.stateKey == "" {
 				r.powerLevels = append(r.powerLevels, event)
 				continue
 			}
-		case spec.MRoomJoinRules:
+		case spec.MFrameJoinRules:
 			if key.stateKey == "" {
 				r.joinRules = append(r.joinRules, event)
 				continue
 			}
-		case spec.MRoomMember:
+		case spec.MFrameMember:
 			blockList = &r.members
-		case spec.MRoomThirdPartyInvite:
+		case spec.MFrameThirdPartyInvite:
 			blockList = &r.thirdPartyInvites
 		}
 		// We need to find an entry for the state key in a block list.
@@ -159,28 +144,28 @@ func (r *stateResolver) addConflicted(events []PDU) { // nolint: gocyclo
 
 // Add an event to the resolved auth events.
 func (r *stateResolver) addAuthEvent(event PDU) {
-	if event.RoomID() != "" && r.roomID == "" {
-		r.roomID = event.RoomID()
+	if event.FrameID() != "" && r.frameID == "" {
+		r.frameID = event.FrameID()
 	}
-	if r.roomID != event.RoomID() {
+	if r.frameID != event.FrameID() {
 		r.valid = false
 	}
 	switch event.Type() {
-	case spec.MRoomCreate:
+	case spec.MFrameCreate:
 		if event.StateKeyEquals("") {
 			r.resolvedCreate = event
 		}
-	case spec.MRoomPowerLevels:
+	case spec.MFramePowerLevels:
 		if event.StateKeyEquals("") {
 			r.resolvedPowerLevels = event
 		}
-	case spec.MRoomJoinRules:
+	case spec.MFrameJoinRules:
 		if event.StateKeyEquals("") {
 			r.resolvedJoinRules = event
 		}
-	case spec.MRoomMember:
+	case spec.MFrameMember:
 		r.resolvedMembers[spec.SenderID(*event.StateKey())] = event
-	case spec.MRoomThirdPartyInvite:
+	case spec.MFrameThirdPartyInvite:
 		r.resolvedThirdPartyInvites[*event.StateKey()] = event
 	}
 }
@@ -188,21 +173,21 @@ func (r *stateResolver) addAuthEvent(event PDU) {
 // Remove the auth event with the given type and state key.
 func (r *stateResolver) removeAuthEvent(eventType, stateKey string) {
 	switch eventType {
-	case spec.MRoomCreate:
+	case spec.MFrameCreate:
 		if stateKey == "" {
 			r.resolvedCreate = nil
 		}
-	case spec.MRoomPowerLevels:
+	case spec.MFramePowerLevels:
 		if stateKey == "" {
 			r.resolvedPowerLevels = nil
 		}
-	case spec.MRoomJoinRules:
+	case spec.MFrameJoinRules:
 		if stateKey == "" {
 			r.resolvedJoinRules = nil
 		}
-	case spec.MRoomMember:
+	case spec.MFrameMember:
 		r.resolvedMembers[spec.SenderID(stateKey)] = nil
-	case spec.MRoomThirdPartyInvite:
+	case spec.MFrameThirdPartyInvite:
 		r.resolvedThirdPartyInvites[stateKey] = nil
 	}
 }
@@ -323,11 +308,11 @@ func (s conflictedEventSorter) Swap(i, j int) {
 
 // ResolveConflicts performs state resolution on the input events, returning the
 // resolved state. It will automatically decide which state resolution algorithm
-// to use, depending on the room version. `events` should be all the state events
+// to use, depending on the frame version. `events` should be all the state events
 // to resolve. `authEvents` should be the entire set of auth_events for these `events`.
 // Returns an error if the state resolution algorithm cannot be determined.
 func ResolveConflicts(
-	version RoomVersion,
+	version FrameVersion,
 	events []PDU,
 	authEvents []PDU,
 	userIDForSender spec.UserIDForSender,
@@ -374,8 +359,8 @@ func ResolveConflicts(
 	}
 
 	// Work out which state resolution algorithm we want to run for
-	// the room version.
-	verImpl, err := GetRoomVersion(version)
+	// the frame version.
+	verImpl, err := GetFrameVersion(version)
 	if err != nil {
 		return nil, err
 	}

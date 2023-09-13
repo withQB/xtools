@@ -9,11 +9,11 @@ import (
 	"github.com/withqb/xtools/spec"
 )
 
-// RoomVersion refers to the room version for a specific room.
-type RoomVersion string
+// FrameVersion refers to the frame version for a specific frame.
+type FrameVersion string
 
-type IRoomVersion interface {
-	Version() RoomVersion
+type IFrameVersion interface {
+	Version() FrameVersion
 	Stable() bool
 	StateResAlgorithm() StateResAlgorithm
 	EventFormat() EventFormat
@@ -25,7 +25,7 @@ type IRoomVersion interface {
 	NewEventFromUntrustedJSON(eventJSON []byte) (result PDU, err error)
 	NewEventBuilder() *EventBuilder
 	NewEventBuilderFromProtoEvent(pe *ProtoEvent) *EventBuilder
-	CheckRestrictedJoin(ctx context.Context, localServerName spec.ServerName, roomQuerier RestrictedRoomJoinQuerier, roomID spec.RoomID, senderID spec.SenderID) (string, error)
+	CheckRestrictedJoin(ctx context.Context, localServerName spec.ServerName, frameQuerier RestrictedFrameJoinQuerier, frameID spec.FrameID, senderID spec.SenderID) (string, error)
 
 	RestrictedJoinServername(content []byte) (spec.ServerName, error)
 	CheckRestrictedJoinsAllowed() error
@@ -44,21 +44,20 @@ type EventFormat int
 // EventIDFormat refers to the formatting used to generate new event IDs.
 type EventIDFormat int
 
-// Room version constants. These are strings because the version grammar
+// Frame version constants. These are strings because the version grammar
 // allows for future expansion.
-// https://matrix.org/docs/spec/#room-version-grammar
 const (
-	RoomVersionV1        RoomVersion = "1"
-	RoomVersionV2        RoomVersion = "2"
-	RoomVersionV3        RoomVersion = "3"
-	RoomVersionV4        RoomVersion = "4"
-	RoomVersionV5        RoomVersion = "5"
-	RoomVersionV6        RoomVersion = "6"
-	RoomVersionV7        RoomVersion = "7"
-	RoomVersionV8        RoomVersion = "8"
-	RoomVersionV9        RoomVersion = "9"
-	RoomVersionV10       RoomVersion = "10"
-	RoomVersionPseudoIDs RoomVersion = "org.matrix.msc4014"
+	FrameVersionV1        FrameVersion = "1"
+	FrameVersionV2        FrameVersion = "2"
+	FrameVersionV3        FrameVersion = "3"
+	FrameVersionV4        FrameVersion = "4"
+	FrameVersionV5        FrameVersion = "5"
+	FrameVersionV6        FrameVersion = "6"
+	FrameVersionV7        FrameVersion = "7"
+	FrameVersionV8        FrameVersion = "8"
+	FrameVersionV9        FrameVersion = "9"
+	FrameVersionV10       FrameVersion = "10"
+	FrameVersionPseudoIDs FrameVersion = "org.matrix.msc4014"
 )
 
 // Event format constants.
@@ -80,9 +79,9 @@ const (
 	StateResV2                              // state resolution v2
 )
 
-var roomVersionMeta = map[RoomVersion]IRoomVersion{
-	RoomVersionV1: RoomVersionImpl{
-		ver:                                    RoomVersionV1,
+var frameVersionMeta = map[FrameVersion]IFrameVersion{
+	FrameVersionV1: FrameVersionImpl{
+		ver:                                    FrameVersionV1,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV1,
 		eventFormat:                            EventFormatV1,
@@ -100,8 +99,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV1,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV1,
 	},
-	RoomVersionV2: RoomVersionImpl{
-		ver:                                    RoomVersionV2,
+	FrameVersionV2: FrameVersionImpl{
+		ver:                                    FrameVersionV2,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV1,
@@ -119,8 +118,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV1,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV1,
 	},
-	RoomVersionV3: RoomVersionImpl{
-		ver:                                    RoomVersionV3,
+	FrameVersionV3: FrameVersionImpl{
+		ver:                                    FrameVersionV3,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -138,8 +137,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	RoomVersionV4: RoomVersionImpl{
-		ver:                                    RoomVersionV4,
+	FrameVersionV4: FrameVersionImpl{
+		ver:                                    FrameVersionV4,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -157,8 +156,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	RoomVersionV5: RoomVersionImpl{
-		ver:                                    RoomVersionV5,
+	FrameVersionV5: FrameVersionImpl{
+		ver:                                    FrameVersionV5,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -176,8 +175,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	RoomVersionV6: RoomVersionImpl{
-		ver:                                    RoomVersionV6,
+	FrameVersionV6: FrameVersionImpl{
+		ver:                                    FrameVersionV6,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -195,8 +194,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	RoomVersionV7: RoomVersionImpl{
-		ver:                                    RoomVersionV7,
+	FrameVersionV7: FrameVersionImpl{
+		ver:                                    FrameVersionV7,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -214,8 +213,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	RoomVersionV8: RoomVersionImpl{
-		ver:                                    RoomVersionV8,
+	FrameVersionV8: FrameVersionImpl{
+		ver:                                    FrameVersionV8,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -233,8 +232,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	RoomVersionV9: RoomVersionImpl{
-		ver:                                    RoomVersionV9,
+	FrameVersionV9: FrameVersionImpl{
+		ver:                                    FrameVersionV9,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -252,8 +251,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	RoomVersionV10: RoomVersionImpl{
-		ver:                                    RoomVersionV10,
+	FrameVersionV10: FrameVersionImpl{
+		ver:                                    FrameVersionV10,
 		stable:                                 true,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -271,8 +270,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	RoomVersionPseudoIDs: RoomVersionImpl{ // currently, just a copy of V10
-		ver:                                    RoomVersionPseudoIDs,
+	FrameVersionPseudoIDs: FrameVersionImpl{ // currently, just a copy of V10
+		ver:                                    FrameVersionPseudoIDs,
 		stable:                                 false,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -290,8 +289,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	"org.matrix.msc3667": RoomVersionImpl{ // based on room version 7
-		ver:                                    RoomVersion("org.matrix.msc3667"),
+	"org.matrix.msc3667": FrameVersionImpl{ // based on frame version 7
+		ver:                                    FrameVersion("org.matrix.msc3667"),
 		stable:                                 false,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -309,8 +308,8 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	"org.matrix.msc3787": RoomVersionImpl{ // roughly, the union of v7 and v9
-		ver:                                    RoomVersion("org.matrix.msc3787"),
+	"org.matrix.msc3787": FrameVersionImpl{ // roughly, the union of v7 and v9
+		ver:                                    FrameVersion("org.matrix.msc3787"),
 		stable:                                 false,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -329,49 +328,49 @@ var roomVersionMeta = map[RoomVersion]IRoomVersion{
 	},
 }
 
-// RoomVersions returns information about room versions currently
+// FrameVersions returns information about frame versions currently
 // implemented by this commit of gomatrixserverlib.
-func RoomVersions() map[RoomVersion]IRoomVersion {
-	return roomVersionMeta
+func FrameVersions() map[FrameVersion]IFrameVersion {
+	return frameVersionMeta
 }
 
-func KnownRoomVersion(verStr RoomVersion) bool {
-	_, ok := roomVersionMeta[verStr]
+func KnownFrameVersion(verStr FrameVersion) bool {
+	_, ok := frameVersionMeta[verStr]
 	return ok
 }
 
-// StableRoomVersion returns true if the provided room version
-// is both known (i.e. KnownRoomVersion returns true) and marked
+// StableFrameVersion returns true if the provided frame version
+// is both known (i.e. KnownFrameVersion returns true) and marked
 // as stable.
-func StableRoomVersion(verStr RoomVersion) bool {
-	verImpl, ok := roomVersionMeta[verStr]
+func StableFrameVersion(verStr FrameVersion) bool {
+	verImpl, ok := frameVersionMeta[verStr]
 	return ok && verImpl.Stable()
 }
 
-// MustGetRoomVersion is GetRoomVersion but panics if the version doesn't exist. Useful for tests.
-func MustGetRoomVersion(verStr RoomVersion) IRoomVersion {
-	impl, err := GetRoomVersion(verStr)
+// MustGetFrameVersion is GetFrameVersion but panics if the version doesn't exist. Useful for tests.
+func MustGetFrameVersion(verStr FrameVersion) IFrameVersion {
+	impl, err := GetFrameVersion(verStr)
 	if err != nil {
-		panic(fmt.Sprintf("MustGetRoomVersion: %s", verStr))
+		panic(fmt.Sprintf("MustGetFrameVersion: %s", verStr))
 	}
 	return impl
 }
 
-func GetRoomVersion(verStr RoomVersion) (impl IRoomVersion, err error) {
-	v, ok := roomVersionMeta[verStr]
+func GetFrameVersion(verStr FrameVersion) (impl IFrameVersion, err error) {
+	v, ok := frameVersionMeta[verStr]
 	if !ok {
-		return impl, UnsupportedRoomVersionError{
+		return impl, UnsupportedFrameVersionError{
 			Version: verStr,
 		}
 	}
 	return v, nil
 }
 
-// StableRoomVersions returns a map of descriptions for room
+// StableFrameVersions returns a map of descriptions for frame
 // versions that are marked as stable.
-func StableRoomVersions() map[RoomVersion]IRoomVersion {
-	versions := make(map[RoomVersion]IRoomVersion)
-	for id, version := range RoomVersions() {
+func StableFrameVersions() map[FrameVersion]IFrameVersion {
+	versions := make(map[FrameVersion]IFrameVersion)
+	for id, version := range FrameVersions() {
 		if version.Stable() {
 			versions[id] = version
 		}
@@ -379,18 +378,18 @@ func StableRoomVersions() map[RoomVersion]IRoomVersion {
 	return versions
 }
 
-// RoomVersionDescription contains information about a room version,
+// FrameVersionDescription contains information about a frame version,
 // namely whether it is marked as supported or stable in this server
 // version, along with the state resolution algorithm, event ID etc
 // formats used.
 //
-// A version is supported if the server has some support for rooms
+// A version is supported if the server has some support for frames
 // that are this version. A version is marked as stable or unstable
 // in order to hint whether the version should be used to clients
 // calling the /capabilities endpoint.
 // https://matrix.org/docs/spec/client_server/r0.6.0#get-matrix-client-r0-capabilities
-type RoomVersionImpl struct {
-	ver                                    RoomVersion
+type FrameVersionImpl struct {
+	ver                                    FrameVersion
 	stateResAlgorithm                      StateResAlgorithm
 	eventFormat                            EventFormat
 	eventIDFormat                          EventIDFormat
@@ -404,113 +403,113 @@ type RoomVersionImpl struct {
 	restrictedJoinServernameFunc           func(content []byte) (spec.ServerName, error)
 	checkRestrictedJoinAllowedFunc         func() error
 	checkKnockingAllowedFunc               func(m *membershipAllower) error
-	newEventFromUntrustedJSONFunc          func(eventJSON []byte, roomVersion IRoomVersion) (result PDU, err error)
-	newEventFromTrustedJSONFunc            func(eventJSON []byte, redacted bool, roomVersion IRoomVersion) (result PDU, err error)
-	newEventFromTrustedJSONWithEventIDFunc func(eventID string, eventJSON []byte, redacted bool, roomVersion IRoomVersion) (result PDU, err error)
+	newEventFromUntrustedJSONFunc          func(eventJSON []byte, frameVersion IFrameVersion) (result PDU, err error)
+	newEventFromTrustedJSONFunc            func(eventJSON []byte, redacted bool, frameVersion IFrameVersion) (result PDU, err error)
+	newEventFromTrustedJSONWithEventIDFunc func(eventID string, eventJSON []byte, redacted bool, frameVersion IFrameVersion) (result PDU, err error)
 }
 
-type restrictedJoinCheckFunc func(ctx context.Context, localServerName spec.ServerName, roomQuerier RestrictedRoomJoinQuerier, roomID spec.RoomID, senderID spec.SenderID) (string, error)
+type restrictedJoinCheckFunc func(ctx context.Context, localServerName spec.ServerName, frameQuerier RestrictedFrameJoinQuerier, frameID spec.FrameID, senderID spec.SenderID) (string, error)
 
-func (v RoomVersionImpl) Version() RoomVersion {
+func (v FrameVersionImpl) Version() FrameVersion {
 	return v.ver
 }
 
-func (v RoomVersionImpl) Stable() bool {
+func (v FrameVersionImpl) Stable() bool {
 	return v.stable
 }
 
-// StateResAlgorithm returns the state resolution for the given room version.
-func (v RoomVersionImpl) StateResAlgorithm() StateResAlgorithm {
+// StateResAlgorithm returns the state resolution for the given frame version.
+func (v FrameVersionImpl) StateResAlgorithm() StateResAlgorithm {
 	return v.stateResAlgorithm
 }
 
-// EventFormat returns the event format for the given room version.
-func (v RoomVersionImpl) EventFormat() EventFormat {
+// EventFormat returns the event format for the given frame version.
+func (v FrameVersionImpl) EventFormat() EventFormat {
 	return v.eventFormat
 }
 
-// EventIDFormat returns the event ID format for the given room version.
-func (v RoomVersionImpl) EventIDFormat() EventIDFormat {
+// EventIDFormat returns the event ID format for the given frame version.
+func (v FrameVersionImpl) EventIDFormat() EventIDFormat {
 	return v.eventIDFormat
 }
 
 // SignatureValidityCheck returns true if the signature check are passing.
-func (v RoomVersionImpl) SignatureValidityCheck(atTS, validUntilTS spec.Timestamp) bool {
+func (v FrameVersionImpl) SignatureValidityCheck(atTS, validUntilTS spec.Timestamp) bool {
 	return v.signatureValidityCheckFunc(atTS, validUntilTS)
 }
 
 // CheckNotificationLevels checks that the changes in notification levels are allowed.
-func (v RoomVersionImpl) CheckNotificationLevels(senderLevel int64, oldPowerLevels, newPowerLevels PowerLevelContent) error {
+func (v FrameVersionImpl) CheckNotificationLevels(senderLevel int64, oldPowerLevels, newPowerLevels PowerLevelContent) error {
 	return v.notificationLevelCheck(senderLevel, oldPowerLevels, newPowerLevels)
 }
 
-// CheckKnockingAllowed checks if this room version supports knocking on rooms.
-func (v RoomVersionImpl) CheckKnockingAllowed(m *membershipAllower) error {
+// CheckKnockingAllowed checks if this frame version supports knocking on frames.
+func (v FrameVersionImpl) CheckKnockingAllowed(m *membershipAllower) error {
 	return v.checkKnockingAllowedFunc(m)
 }
 
-// CheckRestrictedJoinsAllowed checks if this room version allows restricted joins.
-func (v RoomVersionImpl) CheckRestrictedJoinsAllowed() error {
+// CheckRestrictedJoinsAllowed checks if this frame version allows restricted joins.
+func (v FrameVersionImpl) CheckRestrictedJoinsAllowed() error {
 	return v.checkRestrictedJoinAllowedFunc()
 }
 
 // RestrictedJoinServername returns the severName from a potentially existing
 // join_authorised_via_users_server content field. Used to verify event signatures.
-func (v RoomVersionImpl) RestrictedJoinServername(content []byte) (spec.ServerName, error) {
+func (v FrameVersionImpl) RestrictedJoinServername(content []byte) (spec.ServerName, error) {
 	return v.restrictedJoinServernameFunc(content)
 }
 
 // CheckCanonicalJSON returns an error if the eventJSON is not canonical JSON.
-func (v RoomVersionImpl) CheckCanonicalJSON(eventJSON []byte) error {
+func (v FrameVersionImpl) CheckCanonicalJSON(eventJSON []byte) error {
 	return v.canonicalJSONCheck(eventJSON)
 }
 
 // ParsePowerLevels parses the power_level directly into the passed PowerLevelContent.
-func (v RoomVersionImpl) ParsePowerLevels(contentBytes []byte, c *PowerLevelContent) error {
+func (v FrameVersionImpl) ParsePowerLevels(contentBytes []byte, c *PowerLevelContent) error {
 	return v.parsePowerLevelsFunc(contentBytes, c)
 }
 
-func (v RoomVersionImpl) CheckRestrictedJoin(
+func (v FrameVersionImpl) CheckRestrictedJoin(
 	ctx context.Context,
 	localServerName spec.ServerName,
-	roomQuerier RestrictedRoomJoinQuerier,
-	roomID spec.RoomID, senderID spec.SenderID,
+	frameQuerier RestrictedFrameJoinQuerier,
+	frameID spec.FrameID, senderID spec.SenderID,
 ) (string, error) {
-	return v.checkRestrictedJoin(ctx, localServerName, roomQuerier, roomID, senderID)
+	return v.checkRestrictedJoin(ctx, localServerName, frameQuerier, frameID, senderID)
 }
 
 // RedactEventJSON strips the user controlled fields from an event, but leaves the
 // fields necessary for authenticating the event.
-func (v RoomVersionImpl) RedactEventJSON(eventJSON []byte) ([]byte, error) {
+func (v FrameVersionImpl) RedactEventJSON(eventJSON []byte) ([]byte, error) {
 	return v.redactionAlgorithm(eventJSON)
 }
 
-func (v RoomVersionImpl) NewEventFromTrustedJSON(eventJSON []byte, redacted bool) (result PDU, err error) {
+func (v FrameVersionImpl) NewEventFromTrustedJSON(eventJSON []byte, redacted bool) (result PDU, err error) {
 	return v.newEventFromTrustedJSONFunc(eventJSON, redacted, v)
 }
 
-func (v RoomVersionImpl) NewEventFromTrustedJSONWithEventID(eventID string, eventJSON []byte, redacted bool) (result PDU, err error) {
+func (v FrameVersionImpl) NewEventFromTrustedJSONWithEventID(eventID string, eventJSON []byte, redacted bool) (result PDU, err error) {
 	return v.newEventFromTrustedJSONWithEventIDFunc(eventID, eventJSON, redacted, v)
 }
 
-func (v RoomVersionImpl) NewEventFromUntrustedJSON(eventJSON []byte) (result PDU, err error) {
+func (v FrameVersionImpl) NewEventFromUntrustedJSON(eventJSON []byte) (result PDU, err error) {
 	return v.newEventFromUntrustedJSONFunc(eventJSON, v)
 }
 
-func (v RoomVersionImpl) NewEventBuilder() *EventBuilder {
+func (v FrameVersionImpl) NewEventBuilder() *EventBuilder {
 	return &EventBuilder{
 		version: v,
 	}
 }
-func (v RoomVersionImpl) NewEventBuilderFromProtoEvent(pe *ProtoEvent) *EventBuilder {
+func (v FrameVersionImpl) NewEventBuilderFromProtoEvent(pe *ProtoEvent) *EventBuilder {
 	eb := v.NewEventBuilder()
-	// for now copies all fields, but we should be specific depending on the room version
+	// for now copies all fields, but we should be specific depending on the frame version
 	eb.AuthEvents = pe.AuthEvents
 	eb.Content = pe.Content
 	eb.Depth = pe.Depth
 	eb.PrevEvents = pe.PrevEvents
 	eb.Redacts = pe.Redacts
-	eb.RoomID = pe.RoomID
+	eb.FrameID = pe.FrameID
 	eb.SenderID = pe.SenderID
 	eb.Signature = pe.Signature
 	eb.StateKey = pe.StateKey
@@ -519,27 +518,27 @@ func (v RoomVersionImpl) NewEventBuilderFromProtoEvent(pe *ProtoEvent) *EventBui
 	return eb
 }
 
-// NewEventFromHeaderedJSON creates a new event where the room version is embedded in the JSON bytes.
-// The version is contained in the top level "_room_version" key.
+// NewEventFromHeaderedJSON creates a new event where the frame version is embedded in the JSON bytes.
+// The version is contained in the top level "_frame_version" key.
 func NewEventFromHeaderedJSON(headeredEventJSON []byte, redacted bool) (PDU, error) {
 	eventID := gjson.GetBytes(headeredEventJSON, "_event_id").String()
-	roomVer := RoomVersion(gjson.GetBytes(headeredEventJSON, "_room_version").String())
-	verImpl, err := GetRoomVersion(roomVer)
+	frameVer := FrameVersion(gjson.GetBytes(headeredEventJSON, "_frame_version").String())
+	verImpl, err := GetFrameVersion(frameVer)
 	if err != nil {
 		return nil, err
 	}
 	headeredEventJSON, _ = sjson.DeleteBytes(headeredEventJSON, "_event_id")
-	headeredEventJSON, _ = sjson.DeleteBytes(headeredEventJSON, "_room_version")
+	headeredEventJSON, _ = sjson.DeleteBytes(headeredEventJSON, "_frame_version")
 
 	return verImpl.NewEventFromTrustedJSONWithEventID(eventID, headeredEventJSON, redacted)
 }
 
-// UnsupportedRoomVersionError occurs when a call has been made with a room
+// UnsupportedFrameVersionError occurs when a call has been made with a frame
 // version that is not supported by this version of gomatrixserverlib.
-type UnsupportedRoomVersionError struct {
-	Version RoomVersion
+type UnsupportedFrameVersionError struct {
+	Version FrameVersion
 }
 
-func (e UnsupportedRoomVersionError) Error() string {
-	return fmt.Sprintf("gomatrixserverlib: unsupported room version '%s'", e.Version)
+func (e UnsupportedFrameVersionError) Error() string {
+	return fmt.Sprintf("gomatrixserverlib: unsupported frame version '%s'", e.Version)
 }

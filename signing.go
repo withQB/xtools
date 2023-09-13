@@ -1,18 +1,3 @@
-/* Copyright 2016-2017 Vector Creations Ltd
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package xtools
 
 import (
@@ -31,7 +16,6 @@ import (
 type KeyID string
 
 // SignJSON signs a JSON object returning a copy signed with the given key.
-// https://matrix.org/docs/spec/server_server/unstable.html#signing-json
 func SignJSON(signingName string, keyID KeyID, privateKey ed25519.PrivateKey, message []byte) (signed []byte, err error) {
 	preserve := struct {
 		Signatures map[string]map[KeyID]spec.Base64Bytes `json:"signatures"`
@@ -106,17 +90,17 @@ func VerifyJSON(signingName string, keyID KeyID, publicKey ed25519.PublicKey, me
 
 	// Check that there is a signature from the entity that we are expecting a signature from.
 	if object["signatures"] == nil {
-		return fmt.Errorf("No signatures")
+		return fmt.Errorf("no signatures")
 	}
 	if err := json.Unmarshal(*object["signatures"], &signatures); err != nil {
 		return err
 	}
 	signature, ok := signatures[signingName][keyID]
 	if !ok {
-		return fmt.Errorf("No signature from %q with ID %q", signingName, keyID)
+		return fmt.Errorf("no signature from %q with ID %q", signingName, keyID)
 	}
 	if len(signature) != ed25519.SignatureSize {
-		return fmt.Errorf("Bad signature length from %q with ID %q", signingName, keyID)
+		return fmt.Errorf("bad signature length from %q with ID %q", signingName, keyID)
 	}
 
 	// The "unsigned" key and "signatures" keys aren't covered by the signature so remove them.
@@ -135,7 +119,7 @@ func VerifyJSON(signingName string, keyID KeyID, publicKey ed25519.PublicKey, me
 
 	// Verify the ed25519 signature.
 	if !ed25519.Verify(publicKey, canonical, signature) {
-		return fmt.Errorf("Bad signature from %q with ID %q", signingName, keyID)
+		return fmt.Errorf("bad signature from %q with ID %q", signingName, keyID)
 	}
 
 	return nil

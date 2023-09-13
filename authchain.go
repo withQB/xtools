@@ -8,15 +8,15 @@ import (
 )
 
 // EventProvider returns the requested list of events.
-type EventProvider func(roomVer RoomVersion, eventIDs []string) ([]PDU, error)
+type EventProvider func(frameVer FrameVersion, eventIDs []string) ([]PDU, error)
 
 // VerifyEventAuthChain will verify that the event is allowed according to its auth_events, and then
 // recursively verify each of those auth_events.
 //
-// This function implements Step 4 of https://matrix.org/docs/spec/server_server/latest#checks-performed-on-receipt-of-a-pdu
+// This function implements Step
 // "Passes authorization rules based on the event's auth events, otherwise it is rejected."
 // If an event passes this function without error, the caller should make sure that all the auth_events were actually for
-// a valid room state, and not referencing random bits of room state from different positions in time (Step 5).
+// a valid frame state, and not referencing random bits of frame state from different positions in time (Step 5).
 //
 // The `provideEvents` function will only be called for *new* events rather than for everything as it is
 // assumed that this function is costly. Failing to provide all the requested events will fail this function.

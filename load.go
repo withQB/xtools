@@ -18,20 +18,20 @@ type EventLoadResult struct {
 
 // EventsLoader loads untrusted events and verifies them.
 type EventsLoader struct {
-	roomVer       RoomVersion
+	frameVer       FrameVersion
 	keyRing       JSONVerifier
 	provider      EventProvider
 	stateProvider StateProvider
 	// Set to true to do:
-	// 6. Passes authorization rules based on the current state of the room, otherwise it is "soft failed".
+	// 6. Passes authorization rules based on the current state of the frame, otherwise it is "soft failed".
 	// This is only desirable for live events, not backfilled events hence the flag.
 	performSoftFailCheck bool
 }
 
 // NewEventsLoader returns a new events loader
-func NewEventsLoader(roomVer RoomVersion, keyRing JSONVerifier, stateProvider StateProvider, provider EventProvider, performSoftFailCheck bool) *EventsLoader {
+func NewEventsLoader(frameVer FrameVersion, keyRing JSONVerifier, stateProvider StateProvider, provider EventProvider, performSoftFailCheck bool) *EventsLoader {
 	return &EventsLoader{
-		roomVer:              roomVer,
+		frameVer:              frameVer,
 		keyRing:              keyRing,
 		provider:             provider,
 		stateProvider:        stateProvider,
@@ -48,7 +48,7 @@ func NewEventsLoader(roomVer RoomVersion, keyRing JSONVerifier, stateProvider St
 func (l *EventsLoader) LoadAndVerify(ctx context.Context, rawEvents []json.RawMessage, sortOrder TopologicalOrder, userIDForSender spec.UserIDForSender) ([]EventLoadResult, error) {
 	results := make([]EventLoadResult, len(rawEvents))
 
-	verImpl, err := GetRoomVersion(l.roomVer)
+	verImpl, err := GetFrameVersion(l.frameVer)
 	if err != nil {
 		return nil, err
 	}

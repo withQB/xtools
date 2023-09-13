@@ -8,8 +8,7 @@ import (
 
 // A ServerName is the name a matrix homeserver is identified by.
 // It is a DNS name or IP address optionally followed by a port.
-//
-// https://matrix.org/docs/spec/appendices.html#server-name
+
 type ServerName string
 
 // ParseAndValidateServerName splits a ServerName into a host and port part,

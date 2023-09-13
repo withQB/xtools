@@ -8,43 +8,43 @@ import (
 )
 
 type FederatedJoinClient interface {
-	MakeJoin(ctx context.Context, origin, s spec.ServerName, roomID, userID string) (res MakeJoinResponse, err error)
+	MakeJoin(ctx context.Context, origin, s spec.ServerName, frameID, userID string) (res MakeJoinResponse, err error)
 	SendJoin(ctx context.Context, origin, s spec.ServerName, event PDU) (res SendJoinResponse, err error)
 }
 
-type RestrictedRoomJoinInfo struct {
-	LocalServerInRoom bool
-	UserJoinedToRoom  bool
+type RestrictedFrameJoinInfo struct {
+	LocalServerInFrame bool
+	UserJoinedToFrame  bool
 	JoinedUsers       []PDU
 }
 
 type MembershipQuerier interface {
-	CurrentMembership(ctx context.Context, roomID spec.RoomID, senderID spec.SenderID) (string, error)
+	CurrentMembership(ctx context.Context, frameID spec.FrameID, senderID spec.SenderID) (string, error)
 }
 
-// RestrictedRoomJoinQuerier provides the information needed when processing a restricted room join request.
-type RestrictedRoomJoinQuerier interface {
-	CurrentStateEvent(ctx context.Context, roomID spec.RoomID, eventType string, stateKey string) (PDU, error)
-	InvitePending(ctx context.Context, roomID spec.RoomID, senderID spec.SenderID) (bool, error)
-	RestrictedRoomJoinInfo(ctx context.Context, roomID spec.RoomID, senderID spec.SenderID, localServerName spec.ServerName) (*RestrictedRoomJoinInfo, error)
+// RestrictedFrameJoinQuerier provides the information needed when processing a restricted frame join request.
+type RestrictedFrameJoinQuerier interface {
+	CurrentStateEvent(ctx context.Context, frameID spec.FrameID, eventType string, stateKey string) (PDU, error)
+	InvitePending(ctx context.Context, frameID spec.FrameID, senderID spec.SenderID) (bool, error)
+	RestrictedFrameJoinInfo(ctx context.Context, frameID spec.FrameID, senderID spec.SenderID, localServerName spec.ServerName) (*RestrictedFrameJoinInfo, error)
 }
 
 type ProtoEvent struct {
 	// The sender ID of the user sending the event.
 	SenderID string `json:"sender"`
-	// The room ID of the room this event is in.
-	RoomID string `json:"room_id"`
+	// The frame ID of the frame this event is in.
+	FrameID string `json:"frame_id"`
 	// The type of the event.
 	Type string `json:"type"`
 	// The state_key of the event if the event is a state event or nil if the event is not a state event.
 	StateKey *string `json:"state_key,omitempty"`
-	// The events that immediately preceded this event in the room history. This can be
-	// either []eventReference for room v1/v2, and []string for room v3 onwards.
+	// The events that immediately preceded this event in the frame history. This can be
+	// either []eventReference for frame v1/v2, and []string for frame v3 onwards.
 	PrevEvents interface{} `json:"prev_events"`
 	// The events needed to authenticate this event. This can be
-	// either []eventReference for room v1/v2, and []string for room v3 onwards.
+	// either []eventReference for frame v1/v2, and []string for frame v3 onwards.
 	AuthEvents interface{} `json:"auth_events"`
-	// The event ID of the event being redacted if this event is a "m.room.redaction".
+	// The event ID of the event being redacted if this event is a "m.frame.redaction".
 	Redacts string `json:"redacts,omitempty"`
 	// The depth of the event, This should be one greater than the maximum depth of the previous events.
 	// The create event has a depth of 1.
@@ -70,7 +70,7 @@ func (pe *ProtoEvent) SetUnsigned(unsigned interface{}) (err error) {
 
 type MakeJoinResponse interface {
 	GetJoinEvent() ProtoEvent
-	GetRoomVersion() RoomVersion
+	GetFrameVersion() FrameVersion
 }
 
 type SendJoinResponse interface {
@@ -79,5 +79,5 @@ type SendJoinResponse interface {
 	GetOrigin() spec.ServerName
 	GetJoinEvent() spec.RawJSON
 	GetMembersOmitted() bool
-	GetServersInRoom() []string
+	GetServersInFrame() []string
 }

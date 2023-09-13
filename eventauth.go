@@ -1,18 +1,3 @@
-/* Copyright 2016-2017 Vector Creations Ltd
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package xtools
 
 import (
@@ -28,34 +13,34 @@ import (
 
 // StateNeeded lists the event types and state_keys needed to authenticate an event.
 type StateNeeded struct {
-	// Is the m.room.create event needed to auth the event.
+	// Is the m.frame.create event needed to auth the event.
 	Create bool
-	// Is the m.room.join_rules event needed to auth the event.
+	// Is the m.frame.join_rules event needed to auth the event.
 	JoinRules bool
-	// Is the m.room.power_levels event needed to auth the event.
+	// Is the m.frame.power_levels event needed to auth the event.
 	PowerLevels bool
-	// List of m.room.member state_keys needed to auth the event
+	// List of m.frame.member state_keys needed to auth the event
 	Member []string
-	// List of m.room.third_party_invite state_keys
+	// List of m.frame.third_party_invite state_keys
 	ThirdPartyInvite []string
 }
 
 // Tuples returns the needed state key tuples for performing auth on an event.
 func (s StateNeeded) Tuples() (res []StateKeyTuple) {
 	if s.Create {
-		res = append(res, StateKeyTuple{spec.MRoomCreate, ""})
+		res = append(res, StateKeyTuple{spec.MFrameCreate, ""})
 	}
 	if s.JoinRules {
-		res = append(res, StateKeyTuple{spec.MRoomJoinRules, ""})
+		res = append(res, StateKeyTuple{spec.MFrameJoinRules, ""})
 	}
 	if s.PowerLevels {
-		res = append(res, StateKeyTuple{spec.MRoomPowerLevels, ""})
+		res = append(res, StateKeyTuple{spec.MFramePowerLevels, ""})
 	}
 	for _, senderID := range s.Member {
-		res = append(res, StateKeyTuple{spec.MRoomMember, senderID})
+		res = append(res, StateKeyTuple{spec.MFrameMember, senderID})
 	}
 	for _, token := range s.ThirdPartyInvite {
-		res = append(res, StateKeyTuple{spec.MRoomThirdPartyInvite, token})
+		res = append(res, StateKeyTuple{spec.MFrameThirdPartyInvite, token})
 	}
 	return
 }
@@ -117,11 +102,11 @@ type membershipContent struct {
 // StateNeededForProtoEvent returns the event types and state_keys needed to authenticate the
 // event being built. These events should be put under 'auth_events' for the event being built.
 // Returns an error if the state needed could not be calculated with the given builder, e.g
-// if there is a m.room.member without a membership key.
+// if there is a m.frame.member without a membership key.
 func StateNeededForProtoEvent(protoEvent *ProtoEvent) (result StateNeeded, err error) {
-	// Extract the 'content' object from the event if it is m.room.member as we need to know 'membership'
+	// Extract the 'content' object from the event if it is m.frame.member as we need to know 'membership'
 	var content *membershipContent
-	if protoEvent.Type == spec.MRoomMember {
+	if protoEvent.Type == spec.MFrameMember {
 		if err = json.Unmarshal(protoEvent.Content, &content); err != nil {
 			err = errorf("unparseable member event content: %s", err.Error())
 			return
@@ -137,9 +122,9 @@ func StateNeededForProtoEvent(protoEvent *ProtoEvent) (result StateNeeded, err e
 // This takes a list of events to facilitate bulk processing when doing auth checks as part of state conflict resolution.
 func StateNeededForAuth(events []PDU) (result StateNeeded) {
 	for _, event := range events {
-		// Extract the 'content' object from the event if it is m.room.member as we need to know 'membership'
+		// Extract the 'content' object from the event if it is m.frame.member as we need to know 'membership'
 		var content *membershipContent
-		if event.Type() == spec.MRoomMember {
+		if event.Type() == spec.MFrameMember {
 			_ = json.Unmarshal(event.Content(), &content)
 		}
 		// Ignore errors when accumulating state needed.
@@ -155,33 +140,33 @@ func StateNeededForAuth(events []PDU) (result StateNeeded) {
 
 func accumulateStateNeeded(result *StateNeeded, eventType string, sender spec.SenderID, stateKey *string, content *membershipContent) (err error) {
 	switch eventType {
-	case spec.MRoomCreate:
+	case spec.MFrameCreate:
 		// The create event doesn't require any state to authenticate.
 		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L123
-	case spec.MRoomAliases:
+	case spec.MFrameAliases:
 		// Alias events need:
 		//  * The create event.
 		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L128
 		// Alias events need no further authentication.
 		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L160
 		result.Create = true
-	case spec.MRoomMember:
+	case spec.MFrameMember:
 		// Member events need:
 		//  * The previous membership of the target.
 		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L355
 		//  * The current membership state of the sender.
 		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L348
-		//  * The join rules for the room if the event is a join event.
+		//  * The join rules for the frame if the event is a join event.
 		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L361
-		//  * The power levels for the room.
+		//  * The power levels for the frame.
 		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L370
 		//  * And optionally may require a m.third_party_invite event
 		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L393
 		//  * If using a restricted join rule, we should also include the membership event
 		//    of the user nominated in the `join_authorised_via_users_server` key
-		//    https://github.com/matrix-org/matrix-doc/blob/clokep/restricted-rooms/proposals/3083-restricted-rooms.md
+		//    https://github.com/matrix-org/matrix-doc/blob/clokep/restricted-frames/proposals/3083-restricted-frames.md
 		if content == nil {
-			err = errorf("missing memberContent for m.room.member event")
+			err = errorf("missing memberContent for m.frame.member event")
 			return
 		}
 		result.Create = true
@@ -208,7 +193,7 @@ func accumulateStateNeeded(result *StateNeeded, eventType string, sender spec.Se
 		// All other events need:
 		//  * The membership of the sender.
 		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L177
-		//  * The power levels for the room.
+		//  * The power levels for the frame.
 		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L196
 		result.Create = true
 		result.PowerLevels = true
@@ -227,30 +212,30 @@ func thirdPartyInviteToken(thirdPartyInvite *MemberThirdPartyInvite) (string, er
 
 // AuthEventProvider provides auth_events for the authentication checks.
 type AuthEventProvider interface {
-	// Create returns the m.room.create event for the room or nil if there isn't a m.room.create event.
+	// Create returns the m.frame.create event for the frame or nil if there isn't a m.frame.create event.
 	Create() (PDU, error)
-	// JoinRules returns the m.room.join_rules event for the room or nil if there isn't a m.room.join_rules event.
+	// JoinRules returns the m.frame.join_rules event for the frame or nil if there isn't a m.frame.join_rules event.
 	JoinRules() (PDU, error)
-	// PowerLevels returns the m.room.power_levels event for the room or nil if there isn't a m.room.power_levels event.
+	// PowerLevels returns the m.frame.power_levels event for the frame or nil if there isn't a m.frame.power_levels event.
 	PowerLevels() (PDU, error)
-	// Member returns the m.room.member event for the given senderID state_key or nil if there isn't a m.room.member event.
+	// Member returns the m.frame.member event for the given senderID state_key or nil if there isn't a m.frame.member event.
 	Member(stateKey spec.SenderID) (PDU, error)
-	// ThirdPartyInvite returns the m.room.third_party_invite event for the
-	// given state_key or nil if there isn't a m.room.third_party_invite event
+	// ThirdPartyInvite returns the m.frame.third_party_invite event for the
+	// given state_key or nil if there isn't a m.frame.third_party_invite event
 	ThirdPartyInvite(stateKey string) (PDU, error)
-	// Valid verifies that all auth events are from the same room.
+	// Valid verifies that all auth events are from the same frame.
 	Valid() bool
 }
 
 // AuthEvents is an implementation of AuthEventProvider backed by a map.
 type AuthEvents struct {
 	events  map[StateKeyTuple]PDU
-	roomIDs map[string]struct{}
+	frameIDs map[string]struct{}
 }
 
-// Valid verifies that all auth events are from the same room.
+// Valid verifies that all auth events are from the same frame.
 func (a *AuthEvents) Valid() bool {
-	return len(a.roomIDs) <= 1
+	return len(a.frameIDs) <= 1
 }
 
 // AddEvent adds an event to the provider. If an event already existed for the (type, state_key) then
@@ -259,34 +244,34 @@ func (a *AuthEvents) AddEvent(event PDU) error {
 	if event.StateKey() == nil {
 		return fmt.Errorf("AddEvent: event %q does not have a state key", event.Type())
 	}
-	a.roomIDs[event.RoomID()] = struct{}{}
+	a.frameIDs[event.FrameID()] = struct{}{}
 	a.events[StateKeyTuple{event.Type(), *event.StateKey()}] = event
 	return nil
 }
 
 // Create implements AuthEventProvider
 func (a *AuthEvents) Create() (PDU, error) {
-	return a.events[StateKeyTuple{spec.MRoomCreate, ""}], nil
+	return a.events[StateKeyTuple{spec.MFrameCreate, ""}], nil
 }
 
 // JoinRules implements AuthEventProvider
 func (a *AuthEvents) JoinRules() (PDU, error) {
-	return a.events[StateKeyTuple{spec.MRoomJoinRules, ""}], nil
+	return a.events[StateKeyTuple{spec.MFrameJoinRules, ""}], nil
 }
 
 // PowerLevels implements AuthEventProvider
 func (a *AuthEvents) PowerLevels() (PDU, error) {
-	return a.events[StateKeyTuple{spec.MRoomPowerLevels, ""}], nil
+	return a.events[StateKeyTuple{spec.MFramePowerLevels, ""}], nil
 }
 
 // Member implements AuthEventProvider
 func (a *AuthEvents) Member(stateKey spec.SenderID) (PDU, error) {
-	return a.events[StateKeyTuple{spec.MRoomMember, string(stateKey)}], nil
+	return a.events[StateKeyTuple{spec.MFrameMember, string(stateKey)}], nil
 }
 
 // ThirdPartyInvite implements AuthEventProvider
 func (a *AuthEvents) ThirdPartyInvite(stateKey string) (PDU, error) {
-	return a.events[StateKeyTuple{spec.MRoomThirdPartyInvite, stateKey}], nil
+	return a.events[StateKeyTuple{spec.MFrameThirdPartyInvite, stateKey}], nil
 }
 
 // Clear removes all entries from the AuthEventProvider.
@@ -301,7 +286,7 @@ func (a *AuthEvents) Clear() {
 func NewAuthEvents(events []PDU) AuthEvents {
 	a := AuthEvents{
 		events:  make(map[StateKeyTuple]PDU, len(events)),
-		roomIDs: make(map[string]struct{}),
+		frameIDs: make(map[string]struct{}),
 	}
 	for _, e := range events {
 		a.AddEvent(e) // nolint: errcheck
@@ -324,7 +309,7 @@ func errorf(message string, args ...interface{}) error {
 
 // allowerContext allows auth checks to be run using cached create,
 // power level and join rule events. This can help when authing a large
-// state set for a specific room.
+// state set for a specific frame.
 type allowerContext struct {
 	// The auth event provider. This must be set.
 	provider AuthEventProvider
@@ -333,22 +318,22 @@ type allowerContext struct {
 	userIDQuerier spec.UserIDForSender
 
 	// Event references used to see when we need to update.
-	createEvent      PDU // The m.room.create event for the room.
-	powerLevelsEvent PDU // The m.room.power_levels event for the room.
-	joinRuleEvent    PDU // The m.room.join_rules event for the room.
+	createEvent      PDU // The m.frame.create event for the frame.
+	powerLevelsEvent PDU // The m.frame.power_levels event for the frame.
+	joinRuleEvent    PDU // The m.frame.join_rules event for the frame.
 
 	// Event contents used for quick lookup.
-	create      CreateContent     // The m.room.create content for the room.
-	powerLevels PowerLevelContent // The m.room.power_levels content for the room.
-	joinRule    JoinRuleContent   // The m.room.join_rules content for the room.
+	create      CreateContent     // The m.frame.create content for the frame.
+	powerLevels PowerLevelContent // The m.frame.power_levels content for the frame.
+	joinRule    JoinRuleContent   // The m.frame.join_rules content for the frame.
 
-	roomID spec.RoomID
+	frameID spec.FrameID
 }
 
-func newAllowerContext(provider AuthEventProvider, userIDQuerier spec.UserIDForSender, roomID spec.RoomID) *allowerContext {
+func newAllowerContext(provider AuthEventProvider, userIDQuerier spec.UserIDForSender, frameID spec.FrameID) *allowerContext {
 	a := &allowerContext{
 		userIDQuerier: userIDQuerier,
-		roomID:        roomID,
+		frameID:        frameID,
 	}
 	a.update(provider)
 	return a
@@ -390,15 +375,15 @@ func (a *allowerContext) update(provider AuthEventProvider) {
 // If there was an error loading the auth events then it returns that error.
 func (a *allowerContext) allowed(event PDU) error {
 	switch event.Type() {
-	case spec.MRoomCreate:
+	case spec.MFrameCreate:
 		return a.createEventAllowed(event)
-	case spec.MRoomAliases:
+	case spec.MFrameAliases:
 		return a.aliasEventAllowed(event)
-	case spec.MRoomMember:
+	case spec.MFrameMember:
 		return a.memberEventAllowed(event)
-	case spec.MRoomPowerLevels:
+	case spec.MFramePowerLevels:
 		return a.powerLevelsEventAllowed(event)
-	case spec.MRoomRedaction:
+	case spec.MFrameRedaction:
 		return a.redactEventAllowed(event)
 	default:
 		return a.defaultEventAllowed(event)
@@ -410,38 +395,38 @@ func (a *allowerContext) allowed(event PDU) error {
 // If there was an error loading the auth events then it returns that error.
 func Allowed(event PDU, authEvents AuthEventProvider, userIDQuerier spec.UserIDForSender) error {
 	if !authEvents.Valid() {
-		return errorf("authEvents contains events from different rooms")
+		return errorf("authEvents contains events from different frames")
 	}
-	validRoomID, err := spec.NewRoomID(event.RoomID())
+	validFrameID, err := spec.NewFrameID(event.FrameID())
 	if err != nil {
 		return err
 	}
-	return newAllowerContext(authEvents, userIDQuerier, *validRoomID).allowed(event)
+	return newAllowerContext(authEvents, userIDQuerier, *validFrameID).allowed(event)
 }
 
-// createEventAllowed checks whether the m.room.create event is allowed.
+// createEventAllowed checks whether the m.frame.create event is allowed.
 // It returns an error if the event is not allowed.
 func (a *allowerContext) createEventAllowed(event PDU) error {
 	if !event.StateKeyEquals("") {
 		return errorf("create event state key is not empty: %v", event.StateKey())
 	}
 	if len(event.PrevEventIDs()) > 0 {
-		return errorf("create event must be the first event in the room: found %d prev_events", len(event.PrevEventIDs()))
+		return errorf("create event must be the first event in the frame: found %d prev_events", len(event.PrevEventIDs()))
 	}
-	roomIDDomain, err := domainFromID(event.RoomID())
+	frameIDDomain, err := domainFromID(event.FrameID())
 	if err != nil {
 		return err
 	}
-	sender, err := a.userIDQuerier(a.roomID, event.SenderID())
+	sender, err := a.userIDQuerier(a.frameID, event.SenderID())
 	if err != nil {
 		return err
 	}
-	if string(sender.Domain()) != roomIDDomain {
-		return errorf("create event room ID domain does not match sender: %q != %q", roomIDDomain, sender.String())
+	if string(sender.Domain()) != frameIDDomain {
+		return errorf("create event frame ID domain does not match sender: %q != %q", frameIDDomain, sender.String())
 	}
 	c := struct {
 		Creator     *string      `json:"creator"`
-		RoomVersion *RoomVersion `json:"room_version"`
+		FrameVersion *FrameVersion `json:"frame_version"`
 	}{}
 	if err := json.Unmarshal(event.Content(), &c); err != nil {
 		return errorf("create event has invalid content: %s", err.Error())
@@ -449,15 +434,15 @@ func (a *allowerContext) createEventAllowed(event PDU) error {
 	if c.Creator == nil {
 		return errorf("create event has no creator field")
 	}
-	if c.RoomVersion != nil {
-		if !KnownRoomVersion(*c.RoomVersion) {
-			return errorf("create event has unrecognised room version %q", *c.RoomVersion)
+	if c.FrameVersion != nil {
+		if !KnownFrameVersion(*c.FrameVersion) {
+			return errorf("create event has unrecognised frame version %q", *c.FrameVersion)
 		}
 	}
 	return nil
 }
 
-// memberEventAllowed checks whether the m.room.member event is allowed.
+// memberEventAllowed checks whether the m.frame.member event is allowed.
 // Membership events have different authentication rules to ordinary events.
 func (a *allowerContext) memberEventAllowed(event PDU) error {
 	allower, err := a.newMembershipAllower(a.provider, event)
@@ -467,26 +452,26 @@ func (a *allowerContext) memberEventAllowed(event PDU) error {
 	return allower.membershipAllowed(event)
 }
 
-// aliasEventAllowed checks whether the m.room.aliases event is allowed.
+// aliasEventAllowed checks whether the m.frame.aliases event is allowed.
 // Alias events have different authentication rules to ordinary events.
 func (a *allowerContext) aliasEventAllowed(event PDU) error {
 	// The alias events have different auth rules to ordinary events.
-	// In particular we allow any server to send a m.room.aliases event without checking if the sender is in the room.
-	// This allows server admins to update the m.room.aliases event for their server when they change the aliases on their server.
+	// In particular we allow any server to send a m.frame.aliases event without checking if the sender is in the frame.
+	// This allows server admins to update the m.frame.aliases event for their server when they change the aliases on their server.
 	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L143-L160
-	sender, err := a.userIDQuerier(a.roomID, event.SenderID())
+	sender, err := a.userIDQuerier(a.frameID, event.SenderID())
 	if err != nil {
 		return err
 	}
 
-	if event.RoomID() != a.create.roomID {
+	if event.FrameID() != a.create.frameID {
 		return errorf(
-			"create event has different roomID: %q (%s) != %q (%s)",
-			event.RoomID(), event.EventID(), a.create.roomID, a.create.eventID,
+			"create event has different frameID: %q (%s) != %q (%s)",
+			event.FrameID(), event.EventID(), a.create.frameID, a.create.eventID,
 		)
 	}
 
-	// Check that server is allowed in the room by the m.room.federate flag.
+	// Check that server is allowed in the frame by the m.frame.federate flag.
 	if err := a.create.DomainAllowed(string(sender.Domain())); err != nil {
 		return err
 	}
@@ -495,7 +480,7 @@ func (a *allowerContext) aliasEventAllowed(event PDU) error {
 	// Check that the state key matches the server sending this event.
 	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L158
 	switch event.Version() {
-	case RoomVersionPseudoIDs:
+	case FrameVersionPseudoIDs:
 		if !event.StateKeyEquals(string(event.SenderID())) {
 			return errorf("alias state_key does not match sender domain, %q != %q", event.SenderID(), *event.StateKey())
 		}
@@ -508,7 +493,7 @@ func (a *allowerContext) aliasEventAllowed(event PDU) error {
 	return nil
 }
 
-// powerLevelsEventAllowed checks whether the m.room.power_levels event is allowed.
+// powerLevelsEventAllowed checks whether the m.frame.power_levels event is allowed.
 // It returns an error if the event is not allowed or if there was a problem
 // loading the auth events needed.
 func (a *allowerContext) powerLevelsEventAllowed(event PDU) error {
@@ -518,7 +503,7 @@ func (a *allowerContext) powerLevelsEventAllowed(event PDU) error {
 	}
 
 	// power level events must pass the default checks.
-	// These checks will catch if the user has a high enough level to set a m.room.power_levels state event.
+	// These checks will catch if the user has a high enough level to set a m.frame.power_levels state event.
 	if err = allower.commonChecks(event); err != nil {
 		return err
 	}
@@ -532,7 +517,7 @@ func (a *allowerContext) powerLevelsEventAllowed(event PDU) error {
 	// Check that the user levels are all valid user IDs
 	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L1063
 	for senderID := range newPowerLevels.Users {
-		sender, err := a.userIDQuerier(a.roomID, spec.SenderID(senderID))
+		sender, err := a.userIDQuerier(a.frameID, spec.SenderID(senderID))
 		if err != nil {
 			return err
 		}
@@ -551,7 +536,7 @@ func (a *allowerContext) powerLevelsEventAllowed(event PDU) error {
 	}
 
 	// Check that the changes in notification levels are allowed.
-	verImpl, err := GetRoomVersion(event.Version())
+	verImpl, err := GetFrameVersion(event.Version())
 	if err != nil {
 		return nil
 	}
@@ -563,7 +548,7 @@ func (a *allowerContext) powerLevelsEventAllowed(event PDU) error {
 	return checkUserLevels(senderLevel, event.SenderID(), oldPowerLevels, newPowerLevels)
 }
 
-// noCheckLevels doesn't perform any checks, used for room versions <= 5
+// noCheckLevels doesn't perform any checks, used for frame versions <= 5
 func noCheckLevels(senderLevel int64, oldPowerLevels, newPowerLevels PowerLevelContent) error {
 	return nil
 }
@@ -760,7 +745,7 @@ func checkNotificationLevels(senderLevel int64, oldPowerLevels, newPowerLevels P
 		// Users are allowed to change the notification level if:
 		//   * If the current value is less than or equal to the `sender`'s current power level
 		//   * If the new value is less than or equal to the `sender`'s current power level
-		// https://matrix.org/docs/spec/rooms/v6#authorization-rules-for-events
+		// https://matrix.org/docs/spec/frames/v6#authorization-rules-for-events
 
 		// Check if the user is trying to set any of the levels to above their own.
 		if senderLevel < level.new {
@@ -784,9 +769,9 @@ func checkNotificationLevels(senderLevel int64, oldPowerLevels, newPowerLevels P
 	return nil
 }
 
-// redactEventAllowed checks whether the m.room.redaction event is allowed to
-// enter the DAG of a room. Note that for v1, v2 rooms, this doesn't check if
-// the redactor is the sender of the redacted event, and for rooms >= v3, this
+// redactEventAllowed checks whether the m.frame.redaction event is allowed to
+// enter the DAG of a frame. Note that for v1, v2 frames, this doesn't check if
+// the redactor is the sender of the redacted event, and for frames >= v3, this
 // doesn't provide substantial checks other than some basic checks (e.g.
 // membership) on the event.
 // It returns an error if the event is not allowed or if there was a problem
@@ -802,9 +787,9 @@ func (a *allowerContext) redactEventAllowed(event PDU) error {
 		return err
 	}
 
-	roomVersion := allower.create.RoomVersion
-	if roomVersion != nil && *roomVersion != "1" && *roomVersion != "2" {
-		// We always accept redaction events into the DAG for rooms >= v3 after the
+	frameVersion := allower.create.FrameVersion
+	if frameVersion != nil && *frameVersion != "1" && *frameVersion != "2" {
+		// We always accept redaction events into the DAG for frames >= v3 after the
 		// very basic checks.
 		return nil
 	}
@@ -821,7 +806,7 @@ func (a *allowerContext) redactEventAllowed(event PDU) error {
 	// sender and the redacted event.
 	// We leave it up to the sending server to implement the additional checks
 	// to ensure that only events that should be redacted are redacted.
-	sender, err := a.userIDQuerier(a.roomID, event.SenderID())
+	sender, err := a.userIDQuerier(a.frameID, event.SenderID())
 	if err != nil {
 		return err
 	}
@@ -830,7 +815,7 @@ func (a *allowerContext) redactEventAllowed(event PDU) error {
 	}
 
 	// Otherwise the sender must have enough power.
-	// This allows room admins and ops to redact messages sent by other servers.
+	// This allows frame admins and ops to redact messages sent by other servers.
 	senderLevel := allower.powerLevels.UserLevel(event.SenderID())
 	redactLevel := allower.powerLevels.Redact
 	if senderLevel >= redactLevel {
@@ -856,10 +841,10 @@ func (a *allowerContext) defaultEventAllowed(event PDU) error {
 }
 
 // An eventAllower has the information needed to authorise all events types
-// other than m.room.create, m.room.member and m.room.aliases which are special.
+// other than m.frame.create, m.frame.member and m.frame.aliases which are special.
 type eventAllower struct {
 	*allowerContext
-	// The content of the m.room.member event for the sender.
+	// The content of the m.frame.member event for the sender.
 	member MemberContent
 }
 
@@ -874,31 +859,31 @@ func (a *allowerContext) newEventAllower(senderID spec.SenderID) (e eventAllower
 }
 
 // commonChecks does the checks that are applied to all events types other than
-// m.room.create, m.room.member, or m.room.alias.
+// m.frame.create, m.frame.member, or m.frame.alias.
 func (e *eventAllower) commonChecks(event PDU) error {
-	if event.RoomID() != e.create.roomID {
+	if event.FrameID() != e.create.frameID {
 		return errorf(
-			"create event has different roomID: %q (%s) != %q (%s)",
-			event.RoomID(), event.EventID(), e.create.roomID, e.create.eventID,
+			"create event has different frameID: %q (%s) != %q (%s)",
+			event.FrameID(), event.EventID(), e.create.frameID, e.create.eventID,
 		)
 	}
 
 	stateKey := event.StateKey()
-	userID, err := e.userIDQuerier(e.roomID, event.SenderID())
+	userID, err := e.userIDQuerier(e.frameID, event.SenderID())
 	if err != nil {
 		return err
 	}
 	if userID == nil {
-		return errorf("userID not found for sender %q in room %q", event.SenderID(), event.RoomID())
+		return errorf("userID not found for sender %q in frame %q", event.SenderID(), event.FrameID())
 	}
 	if err := e.create.UserIDAllowed(*userID); err != nil {
 		return err
 	}
 
-	// Check that the sender is in the room.
-	// Every event other than m.room.create, m.room.member and m.room.aliases require this.
+	// Check that the sender is in the frame.
+	// Every event other than m.frame.create, m.frame.member and m.frame.aliases require this.
 	if e.member.Membership != spec.Join {
-		return errorf("sender %q not in room", event.SenderID())
+		return errorf("sender %q not in frame", event.SenderID())
 	}
 
 	senderLevel := e.powerLevels.UserLevel(event.SenderID())
@@ -928,11 +913,11 @@ func (e *eventAllower) commonChecks(event PDU) error {
 	return nil
 }
 
-// A membershipAllower has the information needed to authenticate a m.room.member event
+// A membershipAllower has the information needed to authenticate a m.frame.member event
 type membershipAllower struct {
 	*allowerContext
-	roomVersionImpl IRoomVersion
-	// The m.room.third_party_invite content referenced by this event.
+	frameVersionImpl IFrameVersion
+	// The m.frame.third_party_invite content referenced by this event.
 	thirdPartyInvite ThirdPartyInviteContent
 	// The user ID of the user whose membership is changing.
 	targetID string
@@ -946,20 +931,20 @@ type membershipAllower struct {
 	newMember MemberContent
 }
 
-// newMembershipAllower loads the information needed to authenticate the m.room.member event
+// newMembershipAllower loads the information needed to authenticate the m.frame.member event
 // from the auth events.
 func (a *allowerContext) newMembershipAllower(authEvents AuthEventProvider, event PDU) (m membershipAllower, err error) { // nolint: gocyclo
 	m.allowerContext = a
-	m.roomVersionImpl, err = GetRoomVersion(event.Version())
+	m.frameVersionImpl, err = GetFrameVersion(event.Version())
 	if err != nil {
 		return
 	}
 	stateKey := event.StateKey()
 	if stateKey == nil {
-		err = errorf("m.room.member must be a state event")
+		err = errorf("m.frame.member must be a state event")
 		return
 	}
-	// TODO: Check that the IDs are valid user IDs. (for room versions < pseudoIDs)
+	// TODO: Check that the IDs are valid user IDs. (for frame versions < pseudoIDs)
 	m.targetID = *stateKey
 	m.senderID = string(event.SenderID())
 	if m.newMember, err = NewMemberContentFromEvent(event); err != nil {
@@ -983,16 +968,16 @@ func (a *allowerContext) newMembershipAllower(authEvents AuthEventProvider, even
 
 // membershipAllowed checks whether the membership event is allowed
 func (m *membershipAllower) membershipAllowed(event PDU) error { // nolint: gocyclo
-	if m.create.roomID != event.RoomID() {
+	if m.create.frameID != event.FrameID() {
 		return errorf(
-			"create event has different roomID: %q (%s) != %q (%s)",
-			event.RoomID(), event.EventID(), m.create.roomID, m.create.eventID,
+			"create event has different frameID: %q (%s) != %q (%s)",
+			event.FrameID(), event.EventID(), m.create.frameID, m.create.eventID,
 		)
 	}
 
 	var sender *spec.UserID
 	var err error
-	if event.Type() == spec.MRoomMember {
+	if event.Type() == spec.MFrameMember {
 		mapping := MemberContent{}
 		if err := json.Unmarshal(event.Content(), &mapping); err != nil {
 			return err
@@ -1006,20 +991,20 @@ func (m *membershipAllower) membershipAllowed(event PDU) error { // nolint: gocy
 	}
 
 	if sender == nil {
-		sender, err = m.userIDQuerier(m.roomID, spec.SenderID(m.senderID))
+		sender, err = m.userIDQuerier(m.frameID, spec.SenderID(m.senderID))
 		if err != nil {
 			return err
 		}
 	}
 
 	if sender == nil {
-		return errorf("userID not found for sender %q in room %q", m.senderID, event.RoomID())
+		return errorf("userID not found for sender %q in frame %q", m.senderID, event.FrameID())
 	}
 	if err := m.create.UserIDAllowed(*sender); err != nil {
 		return err
 	}
 
-	// Special case the first join event in the room to allow the creator to join.
+	// Special case the first join event in the frame to allow the creator to join.
 	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L328
 	if m.targetID == m.create.Creator &&
 		m.newMember.Membership == spec.Join &&
@@ -1030,7 +1015,7 @@ func (m *membershipAllower) membershipAllowed(event PDU) error { // nolint: gocy
 		prevEventID := event.PrevEventIDs()[0]
 
 		if prevEventID == m.create.eventID {
-			// If this is the room creator joining the room directly after the
+			// If this is the frame creator joining the frame directly after the
 			// the create event, then allow.
 			return nil
 		}
@@ -1053,11 +1038,11 @@ func (m *membershipAllower) membershipAllowed(event PDU) error { // nolint: gocy
 }
 
 func (m *membershipAllower) membershipAllowedSelfForRestrictedJoin() error {
-	// Special case for restricted room joins, where we will check if the membership
+	// Special case for restricted frame joins, where we will check if the membership
 	// event is signed by one of the allowed servers in the join rule content.
 
-	if err := m.roomVersionImpl.CheckRestrictedJoinsAllowed(); err != nil {
-		return errorf("restricted joins are not supported in this room version")
+	if err := m.frameVersionImpl.CheckRestrictedJoinsAllowed(); err != nil {
+		return errorf("restricted joins are not supported in this frame version")
 	}
 
 	// In the case that the user is already joined, invited or there is no
@@ -1070,10 +1055,10 @@ func (m *membershipAllower) membershipAllowedSelfForRestrictedJoin() error {
 	// Otherwise, we have to work out if the server that produced the join was
 	// authorised to do so. This requires the membership event to contain a
 	// 'join_authorised_via_users_server' key, containing the user ID of a user
-	// in the room that should have a suitable power level to issue invites.
+	// in the frame that should have a suitable power level to issue invites.
 	// If no such key is specified then we should reject the join.
-	switch m.roomVersionImpl.Version() {
-	case RoomVersionPseudoIDs:
+	switch m.frameVersionImpl.Version() {
+	case FrameVersionPseudoIDs:
 		// TODO: pseudoIDs: what is a valid senderID? reject if m.newMember.AuthorisedVia != valid
 	default:
 		if _, _, err := SplitID('@', m.newMember.AuthorisedVia); err != nil {
@@ -1082,7 +1067,7 @@ func (m *membershipAllower) membershipAllowedSelfForRestrictedJoin() error {
 	}
 
 	// If the nominated user ID is valid then there are two things that we
-	// need to check. First of all, is the user joined to the room?
+	// need to check. First of all, is the user joined to the frame?
 	otherMember, err := m.provider.Member(spec.SenderID(m.newMember.AuthorisedVia))
 	if err != nil {
 		return errorf("failed to find the membership event for 'join_authorised_via_users_server' user %q", m.newMember.AuthorisedVia)
@@ -1095,16 +1080,16 @@ func (m *membershipAllower) membershipAllowedSelfForRestrictedJoin() error {
 		return errorf("failed to find the membership status for 'join_authorised_via_users_server' user %q", m.newMember.AuthorisedVia)
 	}
 	if otherMembership != spec.Join {
-		return errorf("the nominated 'join_authorised_via_users_server' user %q is not joined to the room", m.newMember.AuthorisedVia)
+		return errorf("the nominated 'join_authorised_via_users_server' user %q is not joined to the frame", m.newMember.AuthorisedVia)
 	}
 
-	// And secondly, does the user have the power to issue invites in the room?
+	// And secondly, does the user have the power to issue invites in the frame?
 	if pl := m.powerLevels.UserLevel(spec.SenderID(m.newMember.AuthorisedVia)); pl < m.powerLevels.Invite {
 		return errorf("the nominated 'join_authorised_via_users_server' user %q does not have permission to invite (%d < %d)", m.newMember.AuthorisedVia, pl, m.powerLevels.Invite)
 	}
 
 	// At this point all of the checks have proceeded, so continue as if
-	// the room is a public room.
+	// the frame is a public frame.
 	m.joinRule.JoinRule = spec.Public
 	return nil
 }
@@ -1160,21 +1145,21 @@ func (m *membershipAllower) membershipAllowedSelf() error { // nolint: gocyclo
 				"join rule %q does not allow knocking", m.joinRule.JoinRule,
 			)
 		}
-		// A user that is not in the room is allowed to knock if the join
+		// A user that is not in the frame is allowed to knock if the join
 		// rules are "knock" and they are not already joined to, invited to
-		// or banned from the room.
-		// Spec: https://spec.matrix.org/unstable/rooms/v7/
+		// or banned from the frame.
+		// Spec: https://spec.matrix.org/unstable/frames/v7/
 		// MSC3787 extends this: the behaviour above is also permitted if the
 		// join rules are "knock_restricted"
 		// Spec: https://github.com/matrix-org/matrix-spec-proposals/pull/3787
-		return m.roomVersionImpl.CheckKnockingAllowed(m)
+		return m.frameVersionImpl.CheckKnockingAllowed(m)
 	case spec.Join:
 		if m.oldMember.Membership == spec.Leave && (m.joinRule.JoinRule == spec.Restricted || m.joinRule.JoinRule == spec.KnockRestricted) {
 			if err := m.membershipAllowedSelfForRestrictedJoin(); err != nil {
 				return err
 			}
 		}
-		// A user that is not in the room is allowed to join if the room
+		// A user that is not in the frame is allowed to join if the frame
 		// join rules are "public".
 		if m.oldMember.Membership == spec.Leave && m.joinRule.JoinRule == spec.Public {
 			return nil
@@ -1194,7 +1179,7 @@ func (m *membershipAllower) membershipAllowedSelf() error { // nolint: gocyclo
 	case spec.Leave:
 		switch m.oldMember.Membership {
 		case spec.Join:
-			// A joined user is allowed to leave the room.
+			// A joined user is allowed to leave the frame.
 			return nil
 		case spec.Invite:
 			// An invited user can reject the invite.
@@ -1226,13 +1211,13 @@ func allowRestrictedJoins() error {
 }
 
 func disallowRestrictedJoins() error {
-	return errorf("restricted joins are not supported in this room version")
+	return errorf("restricted joins are not supported in this frame version")
 }
 
 func disallowKnocking(m *membershipAllower) error {
 	return m.membershipFailed(
-		"room version %q does not support knocking on rooms with join rule %q",
-		m.roomVersionImpl.Version(),
+		"frame version %q does not support knocking on frames with join rule %q",
+		m.frameVersionImpl.Version(),
 		m.joinRule.JoinRule,
 	)
 }
@@ -1241,8 +1226,8 @@ func checkKnocking(m *membershipAllower) error {
 	supported := m.joinRule.JoinRule == spec.Restricted || m.joinRule.JoinRule == spec.KnockRestricted
 	if !supported {
 		return m.membershipFailed(
-			"room version %q does not support knocking on rooms with join rule %q",
-			m.roomVersionImpl.Version(),
+			"frame version %q does not support knocking on frames with join rule %q",
+			m.frameVersionImpl.Version(),
 			m.joinRule.JoinRule,
 		)
 	}
@@ -1264,9 +1249,9 @@ func (m *membershipAllower) membershipAllowedOther() error { // nolint: gocyclo
 	senderLevel := m.powerLevels.UserLevel(spec.SenderID(m.senderID))
 	targetLevel := m.powerLevels.UserLevel(spec.SenderID(m.targetID))
 
-	// You may only modify the membership of another user if you are in the room.
+	// You may only modify the membership of another user if you are in the frame.
 	if m.senderMember.Membership != spec.Join {
-		return errorf("sender %q is not in the room", m.senderID)
+		return errorf("sender %q is not in the frame", m.senderID)
 	}
 
 	switch m.newMember.Membership {
@@ -1296,8 +1281,8 @@ func (m *membershipAllower) membershipAllowedOther() error { // nolint: gocyclo
 			)
 		}
 		// A user may kick another user if their level is high enough.
-		// TODO: You can kick a user that was already kicked, or has left the room, or was
-		// never in the room in the first place. Do we want to allow these redundant kicks?
+		// TODO: You can kick a user that was already kicked, or has left the frame, or was
+		// never in the frame in the first place. Do we want to allow these redundant kicks?
 		if senderLevel >= m.powerLevels.Kick && senderLevel > targetLevel {
 			return nil
 		}
@@ -1326,7 +1311,7 @@ func (m *membershipAllower) membershipAllowedOther() error { // nolint: gocyclo
 			)
 		default:
 			// A user may invite another user if they:
-			// - haven't joined the room yet
+			// - haven't joined the frame yet
 			// - joined before but have since left
 			// - were already invite
 			// - were already knock

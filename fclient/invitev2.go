@@ -9,28 +9,27 @@ import (
 )
 
 // InviteV2Request and InviteV2StrippedState are defined in
-// https://matrix.org/docs/spec/server_server/r0.1.3#put-matrix-federation-v2-invite-roomid-eventid
 
 func NewInviteV2Request(event xtools.PDU, state []xtools.InviteStrippedState) (
 	request InviteV2Request, err error,
 ) {
-	if !xtools.KnownRoomVersion(event.Version()) {
-		err = xtools.UnsupportedRoomVersionError{
+	if !xtools.KnownFrameVersion(event.Version()) {
+		err = xtools.UnsupportedFrameVersionError{
 			Version: event.Version(),
 		}
 		return
 	}
 	request.fields.inviteV2RequestHeaders = inviteV2RequestHeaders{
-		RoomVersion:     event.Version(),
-		InviteRoomState: state,
+		FrameVersion:     event.Version(),
+		InviteFrameState: state,
 	}
 	request.fields.Event = event
 	return
 }
 
 type inviteV2RequestHeaders struct {
-	RoomVersion     xtools.RoomVersion           `json:"room_version"`
-	InviteRoomState []xtools.InviteStrippedState `json:"invite_room_state"`
+	FrameVersion     xtools.FrameVersion           `json:"frame_version"`
+	InviteFrameState []xtools.InviteStrippedState `json:"invite_frame_state"`
 }
 
 // InviteV2Request is used in the body of a /_matrix/federation/v2/invite request.
@@ -56,7 +55,7 @@ func (i *InviteV2Request) UnmarshalJSON(data []byte) error {
 	if !eventJSON.Exists() {
 		return errors.New("xtools: request doesn't contain event")
 	}
-	verImpl, err := xtools.GetRoomVersion(i.fields.RoomVersion)
+	verImpl, err := xtools.GetFrameVersion(i.fields.FrameVersion)
 	if err != nil {
 		return err
 	}
@@ -69,13 +68,13 @@ func (i *InviteV2Request) Event() xtools.PDU {
 	return i.fields.Event
 }
 
-// RoomVersion returns the room version of the invited room.
-func (i *InviteV2Request) RoomVersion() xtools.RoomVersion {
-	return i.fields.RoomVersion
+// FrameVersion returns the frame version of the invited frame.
+func (i *InviteV2Request) FrameVersion() xtools.FrameVersion {
+	return i.fields.FrameVersion
 }
 
-// InviteRoomState returns stripped state events for the room, containing
-// enough information for the client to identify the room.
-func (i *InviteV2Request) InviteRoomState() []xtools.InviteStrippedState {
-	return i.fields.InviteRoomState
+// InviteFrameState returns stripped state events for the frame, containing
+// enough information for the client to identify the frame.
+func (i *InviteV2Request) InviteFrameState() []xtools.InviteStrippedState {
+	return i.fields.InviteFrameState
 }

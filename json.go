@@ -1,18 +1,3 @@
-/* Copyright 2016-2017 Vector Creations Ltd
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package xtools
 
 import (
@@ -29,8 +14,8 @@ import (
 
 type EventJSONs []spec.RawJSON
 
-func (e EventJSONs) TrustedEvents(roomVersion RoomVersion, redacted bool) []PDU {
-	verImpl, err := GetRoomVersion(roomVersion)
+func (e EventJSONs) TrustedEvents(frameVersion FrameVersion, redacted bool) []PDU {
+	verImpl, err := GetFrameVersion(frameVersion)
 	if err != nil {
 		return nil
 	}
@@ -45,8 +30,8 @@ func (e EventJSONs) TrustedEvents(roomVersion RoomVersion, redacted bool) []PDU 
 	return events
 }
 
-func (e EventJSONs) UntrustedEvents(roomVersion RoomVersion) []PDU {
-	verImpl, err := GetRoomVersion(roomVersion)
+func (e EventJSONs) UntrustedEvents(frameVersion FrameVersion) []PDU {
+	verImpl, err := GetFrameVersion(frameVersion)
 	if err != nil {
 		return nil
 	}
@@ -92,18 +77,18 @@ func CanonicalJSON(input []byte) ([]byte, error) {
 
 // Returns a gomatrixserverlib.BadJSONError if the canonical JSON fails enforced
 // checks or if JSON validation fails. At present this function performs:
-//   - integer bounds checking for room version 6 and above:
-//     https://matrix.org/docs/spec/rooms/v6#canonical-json
+//   - integer bounds checking for frame version 6 and above:
+//     https://matrix.org/docs/spec/frames/v6#canonical-json
 //   - shortest encoding, sorted lexicographically by UTF-8 codepoint:
 //     https://matrix.org/docs/spec/appendices#canonical-json
 //
 // Returns a gomatrixserverlib.BadJSONError if JSON validation fails.
-func EnforcedCanonicalJSON(input []byte, roomVersion RoomVersion) ([]byte, error) {
-	roomVersionImpl, err := GetRoomVersion(roomVersion)
+func EnforcedCanonicalJSON(input []byte, frameVersion FrameVersion) ([]byte, error) {
+	frameVersionImpl, err := GetFrameVersion(frameVersion)
 	if err != nil {
 		return nil, err
 	}
-	if err := roomVersionImpl.CheckCanonicalJSON(input); err != nil {
+	if err := frameVersionImpl.CheckCanonicalJSON(input); err != nil {
 		return nil, BadJSONError{err}
 	}
 

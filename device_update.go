@@ -2,7 +2,7 @@ package xtools
 
 import "encoding/json"
 
-// DeviceListUpdateEvent is https://matrix.org/docs/spec/server_server/latest#m-device-list-update-schema
+// DeviceListUpdateEvent
 type DeviceListUpdateEvent struct {
 	UserID            string          `json:"user_id"`
 	DeviceID          string          `json:"device_id"`

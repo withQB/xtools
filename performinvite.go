@@ -10,27 +10,27 @@ import (
 	"github.com/withqb/xtools/spec"
 )
 
-type GetLatestEvents func(ctx context.Context, roomID spec.RoomID, eventsNeeded []StateKeyTuple) (LatestEvents, error)
+type GetLatestEvents func(ctx context.Context, frameID spec.FrameID, eventsNeeded []StateKeyTuple) (LatestEvents, error)
 
 type PerformInviteInput struct {
-	RoomID        spec.RoomID // The room the user is being invited to join
-	RoomVersion   RoomVersion
+	FrameID        spec.FrameID // The frame the user is being invited to join
+	FrameVersion   FrameVersion
 	Inviter       spec.UserID           // The user doing the inviting
-	Invitee       spec.UserID           // The user being invited join the room
+	Invitee       spec.UserID           // The user being invited join the frame
 	IsTargetLocal bool                  // Whether the user being invited is local to this server
 	EventTemplate ProtoEvent            // The original invite event
-	StrippedState []InviteStrippedState // A small set of state events that can be used to identify the room
+	StrippedState []InviteStrippedState // A small set of state events that can be used to identify the frame
 	KeyID         KeyID
 	SigningKey    ed25519.PrivateKey
 	EventTime     time.Time
 
-	MembershipQuerier         MembershipQuerier    // Provides information about the room's membership
+	MembershipQuerier         MembershipQuerier    // Provides information about the frame's membership
 	StateQuerier              StateQuerier         // Provides access to state events
 	UserIDQuerier             spec.UserIDForSender // Provides userID for a given senderID
 	SenderIDQuerier           spec.SenderIDForUser // Provides senderID for a given userID
 	SenderIDCreator           spec.CreateSenderID
 	EventQuerier              GetLatestEvents
-	StoreSenderIDFromPublicID spec.StoreSenderIDFromPublicID // Creates the senderID -> userID for the room creator
+	StoreSenderIDFromPublicID spec.StoreSenderIDFromPublicID // Creates the senderID -> userID for the frame creator
 }
 
 // PerformInvite - Performs all the checks required to validate the invite is allowed
@@ -47,9 +47,9 @@ func PerformInvite(ctx context.Context, input PerformInviteInput, fedClient Fede
 		panic("Missing valid Context")
 	}
 
-	logger := createInviteLogger(ctx, input.RoomID, input.Inviter, input.Invitee, "")
+	logger := createInviteLogger(ctx, input.FrameID, input.Inviter, input.Invitee, "")
 	logger.WithFields(logrus.Fields{
-		"room_version": input.RoomVersion,
+		"frame_version": input.FrameVersion,
 		"target_local": input.IsTargetLocal,
 		"origin_local": true,
 	}).Debug("processing invite event")
@@ -57,7 +57,7 @@ func PerformInvite(ctx context.Context, input PerformInviteInput, fedClient Fede
 	inviteState := input.StrippedState
 	if len(inviteState) == 0 {
 		var err error
-		inviteState, err = GenerateStrippedState(ctx, input.RoomID, input.StateQuerier)
+		inviteState, err = GenerateStrippedState(ctx, input.FrameID, input.StateQuerier)
 		if err != nil {
 			logger.WithError(err).Error("failed generating stripped state")
 			return nil, spec.InternalServerError{}
@@ -69,21 +69,21 @@ func PerformInvite(ctx context.Context, input PerformInviteInput, fedClient Fede
 		return nil, err
 	}
 
-	// Check that we can accept invites for this room version.
-	verImpl, err := GetRoomVersion(input.RoomVersion)
+	// Check that we can accept invites for this frame version.
+	verImpl, err := GetFrameVersion(input.FrameVersion)
 	if err != nil {
-		return nil, spec.UnsupportedRoomVersion(
-			fmt.Sprintf("Room version %q is not supported by this server.", input.RoomVersion),
+		return nil, spec.UnsupportedFrameVersion(
+			fmt.Sprintf("Frame version %q is not supported by this server.", input.FrameVersion),
 		)
 	}
 
-	invitedSenderID, err := input.SenderIDQuerier(input.RoomID, input.Invitee)
+	invitedSenderID, err := input.SenderIDQuerier(input.FrameID, input.Invitee)
 	if err != nil {
 		return nil, err
 	}
 
 	if invitedSenderID != nil {
-		err = abortIfAlreadyJoined(ctx, input.RoomID, *invitedSenderID, input.MembershipQuerier)
+		err = abortIfAlreadyJoined(ctx, input.FrameID, *invitedSenderID, input.MembershipQuerier)
 		if err != nil {
 			return nil, err
 		}
@@ -98,12 +98,12 @@ func PerformInvite(ctx context.Context, input PerformInviteInput, fedClient Fede
 		return nil, spec.InternalServerError{}
 	}
 
-	latestEvents, err := input.EventQuerier(ctx, input.RoomID, stateNeeded.Tuples())
+	latestEvents, err := input.EventQuerier(ctx, input.FrameID, stateNeeded.Tuples())
 	if err != nil {
 		return nil, err
 	}
 
-	if !latestEvents.RoomExists {
+	if !latestEvents.FrameExists {
 		return nil, spec.InternalServerError{}
 	}
 
@@ -153,14 +153,14 @@ func PerformInvite(ctx context.Context, input PerformInviteInput, fedClient Fede
 	// over federation. It might be that the remote user doesn't exist,
 	// in which case we can give up processing here.
 	var inviteEvent PDU
-	switch input.RoomVersion {
-	case RoomVersionPseudoIDs:
+	switch input.FrameVersion {
+	case FrameVersionPseudoIDs:
 		keyID := KeyID("ed25519:1")
 		origin := spec.ServerName(spec.SenderIDFromPseudoIDKey(input.SigningKey))
 
 		if input.IsTargetLocal {
-			// if we invited a local user, we can also create a user room key, if it doesn't exist yet.
-			inviteeSenderID, inviteeSigningKey, err := input.SenderIDCreator(ctx, input.Invitee, input.RoomID, string(input.RoomVersion))
+			// if we invited a local user, we can also create a user frame key, if it doesn't exist yet.
+			inviteeSenderID, inviteeSigningKey, err := input.SenderIDCreator(ctx, input.Invitee, input.FrameID, string(input.FrameVersion))
 			if err != nil {
 				return nil, err
 			}
@@ -191,7 +191,7 @@ func PerformInvite(ctx context.Context, input PerformInviteInput, fedClient Fede
 				return nil, err
 			}
 		} else {
-			inviteEvent, err = fedClient.SendInviteV3(ctx, input.EventTemplate, input.Invitee, input.RoomVersion, inviteState)
+			inviteEvent, err = fedClient.SendInviteV3(ctx, input.EventTemplate, input.Invitee, input.FrameVersion, inviteState)
 			if err != nil {
 				logger.WithError(err).Error("fedClient.SendInviteV3 failed")
 				return nil, spec.Forbidden(err.Error())
@@ -210,7 +210,7 @@ func PerformInvite(ctx context.Context, input PerformInviteInput, fedClient Fede
 				return nil, spec.Forbidden(err.Error())
 			}
 
-			err = input.StoreSenderIDFromPublicID(ctx, spec.SenderID(*inviteEvent.StateKey()), input.Invitee.String(), input.RoomID)
+			err = input.StoreSenderIDFromPublicID(ctx, spec.SenderID(*inviteEvent.StateKey()), input.Invitee.String(), input.FrameID)
 			if err != nil {
 				logger.WithError(err).Errorf("failed storing senderID for %s", input.Invitee.String())
 				return nil, spec.InternalServerError{}

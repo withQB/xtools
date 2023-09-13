@@ -12,19 +12,19 @@ import (
 )
 
 type HandleInviteInput struct {
-	RoomID          spec.RoomID           // The room that the user is being invited to join
-	RoomVersion     RoomVersion           // The version of the invited to room
-	InvitedUser     spec.UserID           // The user being invited to join the room
-	InvitedSenderID spec.SenderID         // The senderID of the user being invited to join the room
+	FrameID          spec.FrameID           // The frame that the user is being invited to join
+	FrameVersion     FrameVersion           // The version of the invited to frame
+	InvitedUser     spec.UserID           // The user being invited to join the frame
+	InvitedSenderID spec.SenderID         // The senderID of the user being invited to join the frame
 	InviteEvent     PDU                   // The original invite event
-	StrippedState   []InviteStrippedState // A small set of state events that can be used to identify the room
+	StrippedState   []InviteStrippedState // A small set of state events that can be used to identify the frame
 
 	KeyID      KeyID              // Used to sign the original invite event
 	PrivateKey ed25519.PrivateKey // Used to sign the original invite event
 	Verifier   JSONVerifier       // Used to verify the original invite event
 
-	RoomQuerier       RoomQuerier          // Provides information about the room
-	MembershipQuerier MembershipQuerier    // Provides information about the room's membership
+	FrameQuerier       FrameQuerier          // Provides information about the frame
+	MembershipQuerier MembershipQuerier    // Provides information about the frame's membership
 	StateQuerier      StateQuerier         // Provides access to state events
 	UserIDQuerier     spec.UserIDForSender // Provides userIDs given a senderID
 }
@@ -40,7 +40,7 @@ type HandleInviteV3Input struct {
 // to return back to the remote server.
 // On success returns a fully formed & signed Invite Event
 func HandleInvite(ctx context.Context, input HandleInviteInput) (PDU, error) {
-	if input.RoomQuerier == nil || input.MembershipQuerier == nil || input.StateQuerier == nil || input.UserIDQuerier == nil {
+	if input.FrameQuerier == nil || input.MembershipQuerier == nil || input.StateQuerier == nil || input.UserIDQuerier == nil {
 		panic("Missing valid Querier")
 	}
 	if input.Verifier == nil {
@@ -51,17 +51,17 @@ func HandleInvite(ctx context.Context, input HandleInviteInput) (PDU, error) {
 		panic("Missing valid Context")
 	}
 
-	// Check that we can accept invites for this room version.
-	verImpl, err := GetRoomVersion(input.RoomVersion)
+	// Check that we can accept invites for this frame version.
+	verImpl, err := GetFrameVersion(input.FrameVersion)
 	if err != nil {
-		return nil, spec.UnsupportedRoomVersion(
-			fmt.Sprintf("Room version %q is not supported by this server.", input.RoomVersion),
+		return nil, spec.UnsupportedFrameVersion(
+			fmt.Sprintf("Frame version %q is not supported by this server.", input.FrameVersion),
 		)
 	}
 
-	// Check that the room ID is correct.
-	if input.InviteEvent.RoomID() != input.RoomID.String() {
-		return nil, spec.BadJSON("The room ID in the request path must match the room ID in the invite event JSON")
+	// Check that the frame ID is correct.
+	if input.InviteEvent.FrameID() != input.FrameID.String() {
+		return nil, spec.BadJSON("The frame ID in the request path must match the frame ID in the invite event JSON")
 	}
 
 	// Check that the event is signed by the server sending the request.
@@ -70,7 +70,7 @@ func HandleInvite(ctx context.Context, input HandleInviteInput) (PDU, error) {
 		return nil, spec.BadJSON("The event JSON could not be redacted")
 	}
 
-	sender, err := input.UserIDQuerier(input.RoomID, input.InviteEvent.SenderID())
+	sender, err := input.UserIDQuerier(input.FrameID, input.InviteEvent.SenderID())
 	if err != nil {
 		return nil, spec.BadJSON("The event JSON contains an invalid sender")
 	}
@@ -97,7 +97,7 @@ func HandleInvite(ctx context.Context, input HandleInviteInput) (PDU, error) {
 }
 
 func HandleInviteV3(ctx context.Context, input HandleInviteV3Input) (PDU, error) {
-	if input.RoomQuerier == nil || input.MembershipQuerier == nil || input.StateQuerier == nil || input.UserIDQuerier == nil {
+	if input.FrameQuerier == nil || input.MembershipQuerier == nil || input.StateQuerier == nil || input.UserIDQuerier == nil {
 		panic("Missing valid Querier")
 	}
 	if input.Verifier == nil {
@@ -108,24 +108,24 @@ func HandleInviteV3(ctx context.Context, input HandleInviteV3Input) (PDU, error)
 		panic("Missing valid Context")
 	}
 
-	// Check that we can accept invites for this room version.
-	verImpl, err := GetRoomVersion(input.RoomVersion)
+	// Check that we can accept invites for this frame version.
+	verImpl, err := GetFrameVersion(input.FrameVersion)
 	if err != nil {
-		return nil, spec.UnsupportedRoomVersion(
-			fmt.Sprintf("Room version %q is not supported by this server.", input.RoomVersion),
+		return nil, spec.UnsupportedFrameVersion(
+			fmt.Sprintf("Frame version %q is not supported by this server.", input.FrameVersion),
 		)
 	}
 
-	// Check that the room ID is correct.
-	if input.InviteProtoEvent.RoomID != input.RoomID.String() {
-		return nil, spec.BadJSON("The room ID in the request path must match the room ID in the invite event JSON")
+	// Check that the frame ID is correct.
+	if input.InviteProtoEvent.FrameID != input.FrameID.String() {
+		return nil, spec.BadJSON("The frame ID in the request path must match the frame ID in the invite event JSON")
 	}
 
-	// NOTE: If we already have a senderID for this user in this room,
+	// NOTE: If we already have a senderID for this user in this frame,
 	// this could be because they are already invited/joined or were previously.
 	// In that case, use the existing senderID to complete this invite event.
 	// Otherwise we need to create a new senderID
-	invitedSenderID, signingKey, err := input.GetOrCreateSenderID(ctx, input.InvitedUser, input.RoomID, string(input.RoomVersion))
+	invitedSenderID, signingKey, err := input.GetOrCreateSenderID(ctx, input.InvitedUser, input.FrameID, string(input.FrameVersion))
 	if err != nil {
 		xutil.GetLogger(ctx).WithError(err).Error("GetOrCreateSenderID failed")
 		return nil, spec.InternalServerError{}
@@ -147,33 +147,33 @@ func HandleInviteV3(ctx context.Context, input HandleInviteV3Input) (PDU, error)
 }
 
 func handleInviteCommonChecks(ctx context.Context, input HandleInviteInput, event PDU, sender spec.UserID) (PDU, error) {
-	isKnownRoom, err := input.RoomQuerier.IsKnownRoom(ctx, input.RoomID)
+	isKnownFrame, err := input.FrameQuerier.IsKnownFrame(ctx, input.FrameID)
 	if err != nil {
-		xutil.GetLogger(ctx).WithError(err).Error("failed querying known room")
+		xutil.GetLogger(ctx).WithError(err).Error("failed querying known frame")
 		return nil, spec.InternalServerError{}
 	}
 
-	logger := createInviteLogger(ctx, input.RoomID, sender, input.InvitedUser, event.EventID())
+	logger := createInviteLogger(ctx, input.FrameID, sender, input.InvitedUser, event.EventID())
 	logger.WithFields(logrus.Fields{
-		"room_version":     event.Version(),
-		"room_info_exists": isKnownRoom,
+		"frame_version":     event.Version(),
+		"frame_info_exists": isKnownFrame,
 	}).Debug("processing incoming federation invite event")
 
 	inviteState := input.StrippedState
 	if len(inviteState) == 0 {
-		inviteState, err = GenerateStrippedState(ctx, input.RoomID, input.StateQuerier)
+		inviteState, err = GenerateStrippedState(ctx, input.FrameID, input.StateQuerier)
 		if err != nil {
 			xutil.GetLogger(ctx).WithError(err).Error("failed generating stripped state")
 			return nil, spec.InternalServerError{}
 		}
 	}
 
-	if isKnownRoom {
+	if isKnownFrame {
 		if len(inviteState) == 0 {
-			xutil.GetLogger(ctx).WithError(err).Error("failed generating stripped state for known room")
+			xutil.GetLogger(ctx).WithError(err).Error("failed generating stripped state for known frame")
 			return nil, spec.InternalServerError{}
 		}
-		err := abortIfAlreadyJoined(ctx, input.RoomID, input.InvitedSenderID, input.MembershipQuerier)
+		err := abortIfAlreadyJoined(ctx, input.FrameID, input.InvitedSenderID, input.MembershipQuerier)
 		if err != nil {
 			return nil, err
 		}

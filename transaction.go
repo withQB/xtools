@@ -23,9 +23,9 @@ type Transaction struct {
 	// server to the destination server in parallel so there may be more than
 	// one previous transaction.
 	PreviousIDs []TransactionID `json:"-"`
-	// The room events pushed from the origin server to the destination server
+	// The frame events pushed from the origin server to the destination server
 	// by this transaction. The events should either be events that originate
-	// on the origin server or be join m.room.member events.
+	// on the origin server or be join m.frame.member events.
 	PDUs []json.RawMessage `json:"pdus"`
 	// The ephemeral events pushed from origin server to destination server
 	// by this transaction. The events must orginate at the origin server.

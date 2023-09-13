@@ -13,23 +13,23 @@ import (
 
 // An EventBuilder is used to build a new event.
 // These can be exchanged between matrix servers in the federation APIs when
-// joining or leaving a room.
+// joining or leaving a frame.
 type EventBuilder struct {
 	// The sender ID of the user sending the event.
 	SenderID string `json:"sender"`
-	// The room ID of the room this event is in.
-	RoomID string `json:"room_id"`
+	// The frame ID of the frame this event is in.
+	FrameID string `json:"frame_id"`
 	// The type of the event.
 	Type string `json:"type"`
 	// The state_key of the event if the event is a state event or nil if the event is not a state event.
 	StateKey *string `json:"state_key,omitempty"`
-	// The events that immediately preceded this event in the room history. This can be
-	// either []eventReference for room v1/v2, and []string for room v3 onwards.
+	// The events that immediately preceded this event in the frame history. This can be
+	// either []eventReference for frame v1/v2, and []string for frame v3 onwards.
 	PrevEvents interface{} `json:"prev_events"`
 	// The events needed to authenticate this event. This can be
-	// either []eventReference for room v1/v2, and []string for room v3 onwards.
+	// either []eventReference for frame v1/v2, and []string for frame v3 onwards.
 	AuthEvents interface{} `json:"auth_events"`
-	// The event ID of the event being redacted if this event is a "m.room.redaction".
+	// The event ID of the event being redacted if this event is a "m.frame.redaction".
 	Redacts string `json:"redacts,omitempty"`
 	// The depth of the event, This should be one greater than the maximum depth of the previous events.
 	// The create event has a depth of 1.
@@ -42,7 +42,7 @@ type EventBuilder struct {
 	Unsigned spec.RawJSON `json:"unsigned,omitempty"`
 
 	// private: forces the user to go through NewEventBuilder
-	version IRoomVersion
+	version IFrameVersion
 }
 
 // SetContent sets the JSON content key of the event.

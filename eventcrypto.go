@@ -1,18 +1,3 @@
-/* Copyright 2016-2017 Vector Creations Ltd
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package xtools
 
 import (
@@ -44,21 +29,21 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 
 	var serverName spec.ServerName
 	needed := map[spec.ServerName]struct{}{}
-	verImpl, err := GetRoomVersion(e.Version())
+	verImpl, err := GetFrameVersion(e.Version())
 	if err != nil {
 		return err
 	}
 
 	// The sender should have signed the event in all cases.
 	switch e.Version() {
-	case RoomVersionPseudoIDs:
+	case FrameVersionPseudoIDs:
 		needed[spec.ServerName(e.SenderID())] = struct{}{}
 	default:
-		validRoomID, err := spec.NewRoomID(e.RoomID())
+		validFrameID, err := spec.NewFrameID(e.FrameID())
 		if err != nil {
 			return err
 		}
-		sender, err := userIDForSender(*validRoomID, e.SenderID())
+		sender, err := userIDForSender(*validFrameID, e.SenderID())
 		if err != nil {
 			return fmt.Errorf("invalid sender userID: %w", err)
 		}
@@ -67,7 +52,7 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 			needed[serverName] = struct{}{}
 		}
 
-		// In room versions 1 and 2, we should also check that the server
+		// In frame versions 1 and 2, we should also check that the server
 		// that created the event is included too. This is probably the
 		// same as the sender.
 		format := verImpl.EventIDFormat()
@@ -81,14 +66,14 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 	}
 
 	// Special checks for membership events.
-	if e.Type() == spec.MRoomMember {
+	if e.Type() == spec.MFrameMember {
 		membership, err := e.Membership()
 		if err != nil {
 			return fmt.Errorf("failed to get membership of membership event: %w", err)
 		}
 
 		// Validate the MXIDMapping is signed correctly
-		if verImpl.Version() == RoomVersionPseudoIDs && membership == spec.Join {
+		if verImpl.Version() == FrameVersionPseudoIDs && membership == spec.Join {
 			err = validateMXIDMappingSignature(ctx, e, verifier, verImpl)
 			if err != nil {
 				return err
@@ -98,7 +83,7 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 		// For invites, the invited server should have signed the event.
 		if membership == spec.Invite {
 			switch e.Version() {
-			case RoomVersionPseudoIDs:
+			case FrameVersionPseudoIDs:
 				needed[spec.ServerName(*e.StateKey())] = struct{}{}
 			default:
 				_, serverName, err = SplitID('@', *e.StateKey())
@@ -138,7 +123,7 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 		toVerify = append(toVerify, v)
 	}
 
-	if verImpl.Version() == RoomVersionPseudoIDs {
+	if verImpl.Version() == FrameVersionPseudoIDs {
 		// we already verified the mxid_mapping at this stage, so replace the KeyRing verifier
 		// with the self verifier to validate pseudoID events
 		verifier = JSONVerifierSelf{}
@@ -159,7 +144,7 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 }
 
 // validateMXIDMappingSignature validates that the MXIDMapping is correctly signed
-func validateMXIDMappingSignature(ctx context.Context, e PDU, verifier JSONVerifier, verImpl IRoomVersion) error {
+func validateMXIDMappingSignature(ctx context.Context, e PDU, verifier JSONVerifier, verImpl IFrameVersion) error {
 	var content MemberContent
 	err := json.Unmarshal(e.Content(), &content)
 	if err != nil {
@@ -284,7 +269,7 @@ func checkEventContentHash(eventJSON []byte) error {
 	sha256Hash := sha256.Sum256(hashableEventJSON)
 
 	if !bytes.Equal(sha256Hash[:], []byte(hash)) {
-		return fmt.Errorf("Invalid Sha256 content hash: %v != %v", sha256Hash[:], []byte(hash))
+		return fmt.Errorf("invalid Sha256 content hash: %v != %v", sha256Hash[:], []byte(hash))
 	}
 
 	return nil
@@ -292,8 +277,8 @@ func checkEventContentHash(eventJSON []byte) error {
 
 // ReferenceSha256HashOfEvent returns the SHA-256 hash of the redacted event content.
 // This is used when referring to this event from other events.
-func referenceOfEvent(eventJSON []byte, roomVersion RoomVersion) (eventReference, error) {
-	verImpl, err := GetRoomVersion(roomVersion)
+func referenceOfEvent(eventJSON []byte, frameVersion FrameVersion) (eventReference, error) {
+	verImpl, err := GetFrameVersion(frameVersion)
 	if err != nil {
 		return eventReference{}, err
 	}
@@ -339,19 +324,19 @@ func referenceOfEvent(eventJSON []byte, roomVersion RoomVersion) (eventReference
 		case EventIDFormatV3:
 			encoder = base64.RawURLEncoding.WithPadding(base64.NoPadding)
 		default:
-			return eventReference{}, UnsupportedRoomVersionError{Version: roomVersion}
+			return eventReference{}, UnsupportedFrameVersionError{Version: frameVersion}
 		}
 		eventID = fmt.Sprintf("$%s", encoder.EncodeToString(sha256Hash[:]))
 	default:
-		return eventReference{}, UnsupportedRoomVersionError{Version: roomVersion}
+		return eventReference{}, UnsupportedFrameVersionError{Version: frameVersion}
 	}
 
 	return eventReference{eventID, sha256Hash[:]}, nil
 }
 
 // SignEvent adds a ED25519 signature to the event for the given key.
-func signEvent(signingName string, keyID KeyID, privateKey ed25519.PrivateKey, eventJSON []byte, roomVersion RoomVersion) ([]byte, error) {
-	verImpl, err := GetRoomVersion(roomVersion)
+func signEvent(signingName string, keyID KeyID, privateKey ed25519.PrivateKey, eventJSON []byte, frameVersion FrameVersion) ([]byte, error) {
+	verImpl, err := GetFrameVersion(frameVersion)
 	if err != nil {
 		return nil, err
 	}

@@ -15,19 +15,19 @@ type PDU interface {
 	Type() string
 	Content() []byte
 	// JoinRule returns the value of the content.join_rule field if this event
-	// is an "m.room.join_rules" event.
-	// Returns an error if the event is not a m.room.join_rules event or if the content
-	// is not valid m.room.join_rules content.
+	// is an "m.frame.join_rules" event.
+	// Returns an error if the event is not a m.frame.join_rules event or if the content
+	// is not valid m.frame.join_rules content.
 	JoinRule() (string, error)
 	// HistoryVisibility returns the value of the content.history_visibility field if this event
-	// is an "m.room.history_visibility" event.
-	// Returns an error if the event is not a m.room.history_visibility event or if the content
-	// is not valid m.room.history_visibility content.
+	// is an "m.frame.history_visibility" event.
+	// Returns an error if the event is not a m.frame.history_visibility event or if the content
+	// is not valid m.frame.history_visibility content.
 	HistoryVisibility() (HistoryVisibility, error)
 	Membership() (string, error)
 	PowerLevels() (*PowerLevelContent, error)
-	Version() RoomVersion
-	RoomID() string
+	Version() FrameVersion
+	FrameID() string
 	Redacts() string
 	// Redacted returns whether the event is redacted.
 	Redacted() bool

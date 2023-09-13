@@ -13,15 +13,15 @@ import (
 
 type HandleMakeJoinInput struct {
 	Context           context.Context
-	UserID            spec.UserID               // The user wanting to join the room
-	SenderID          spec.SenderID             // The senderID of the user wanting to join the room
-	RoomID            spec.RoomID               // The room the user wants to join
-	RoomVersion       RoomVersion               // The room version for the room being joined
-	RemoteVersions    []RoomVersion             // Room versions supported by the remote server
+	UserID            spec.UserID               // The user wanting to join the frame
+	SenderID          spec.SenderID             // The senderID of the user wanting to join the frame
+	FrameID            spec.FrameID               // The frame the user wants to join
+	FrameVersion       FrameVersion               // The frame version for the frame being joined
+	RemoteVersions    []FrameVersion             // Frame versions supported by the remote server
 	RequestOrigin     spec.ServerName           // The server that sent the /make_join federation request
 	LocalServerName   spec.ServerName           // The name of this local server
-	LocalServerInRoom bool                      // Whether this local server has a user currently joined to the room
-	RoomQuerier       RestrictedRoomJoinQuerier // Provides access to potentially required information when processing restricted joins
+	LocalServerInFrame bool                      // Whether this local server has a user currently joined to the frame
+	FrameQuerier       RestrictedFrameJoinQuerier // Provides access to potentially required information when processing restricted joins
 	UserIDQuerier     spec.UserIDForSender      // Provides userIDs given a senderID
 
 	// Returns a fully built version of the proto event and a list of state events required to auth this event
@@ -30,11 +30,11 @@ type HandleMakeJoinInput struct {
 
 type HandleMakeJoinResponse struct {
 	JoinTemplateEvent ProtoEvent
-	RoomVersion       RoomVersion
+	FrameVersion       FrameVersion
 }
 
 func HandleMakeJoin(input HandleMakeJoinInput) (*HandleMakeJoinResponse, error) {
-	if input.RoomQuerier == nil || input.UserIDQuerier == nil {
+	if input.FrameQuerier == nil || input.UserIDQuerier == nil {
 		panic("Missing valid Querier")
 	}
 
@@ -42,13 +42,13 @@ func HandleMakeJoin(input HandleMakeJoinInput) (*HandleMakeJoinResponse, error) 
 		panic("Missing valid Context")
 	}
 
-	// Check that the room that the remote side is trying to join is actually
-	// one of the room versions that they listed in their supported ?ver= in
+	// Check that the frame that the remote side is trying to join is actually
+	// one of the frame versions that they listed in their supported ?ver= in
 	// the make_join URL.
-	// https://matrix.org/docs/spec/server_server/r0.1.3#get-matrix-federation-v1-make-join-roomid-userid
-	// If it isn't, stop trying to join the room.
-	if !roomVersionSupported(input.RoomVersion, input.RemoteVersions) {
-		return nil, spec.IncompatibleRoomVersion(string(input.RoomVersion))
+	// https://matrix.org/docs/spec/server_server/r0.1.3#get-matrix-federation-v1-make-join-frameid-userid
+	// If it isn't, stop trying to join the frame.
+	if !frameVersionSupported(input.FrameVersion, input.RemoteVersions) {
+		return nil, spec.IncompatibleFrameVersion(string(input.FrameVersion))
 	}
 
 	if input.UserID.Domain() != input.RequestOrigin {
@@ -56,17 +56,17 @@ func HandleMakeJoin(input HandleMakeJoinInput) (*HandleMakeJoinResponse, error) 
 			input.RequestOrigin, input.UserID.Domain()))
 	}
 
-	// Check if we think we are still joined to the room
-	if !input.LocalServerInRoom {
-		return nil, spec.NotFound(fmt.Sprintf("Local server not currently joined to room: %s", input.RoomID.String()))
+	// Check if we think we are still joined to the frame
+	if !input.LocalServerInFrame {
+		return nil, spec.NotFound(fmt.Sprintf("Local server not currently joined to frame: %s", input.FrameID.String()))
 	}
 
-	// Check if the restricted join is allowed. If the room doesn't
+	// Check if the restricted join is allowed. If the frame doesn't
 	// support restricted joins then this is effectively a no-op.
-	authorisedVia, err := MustGetRoomVersion(input.RoomVersion).CheckRestrictedJoin(input.Context, input.LocalServerName, input.RoomQuerier, input.RoomID, input.SenderID)
+	authorisedVia, err := MustGetFrameVersion(input.FrameVersion).CheckRestrictedJoin(input.Context, input.LocalServerName, input.FrameQuerier, input.FrameID, input.SenderID)
 	switch e := err.(type) {
 	case nil:
-	case spec.MatrixError:
+	case spec.CoddyError:
 		xutil.GetLogger(input.Context).WithError(err).Error("checkRestrictedJoin failed")
 		return nil, e
 	default:
@@ -77,8 +77,8 @@ func HandleMakeJoin(input HandleMakeJoinInput) (*HandleMakeJoinResponse, error) 
 	rawSenderID := string(input.SenderID)
 	proto := ProtoEvent{
 		SenderID: string(input.SenderID),
-		RoomID:   input.RoomID.String(),
-		Type:     spec.MRoomMember,
+		FrameID:   input.FrameID.String(),
+		Type:     spec.MFrameMember,
 		StateKey: &rawSenderID,
 	}
 	content := MemberContent{
@@ -99,7 +99,7 @@ func HandleMakeJoin(input HandleMakeJoinInput) (*HandleMakeJoinResponse, error) 
 	if state == nil {
 		return nil, spec.InternalServerError{Err: "template builder returned nil event state"}
 	}
-	if event.Type() != spec.MRoomMember {
+	if event.Type() != spec.MFrameMember {
 		return nil, spec.InternalServerError{Err: fmt.Sprintf("expected join event from template builder. got: %s", event.Type())}
 	}
 
@@ -108,25 +108,25 @@ func HandleMakeJoin(input HandleMakeJoinInput) (*HandleMakeJoinResponse, error) 
 		return nil, spec.Forbidden(err.Error())
 	}
 
-	// This ensures we send EventReferences for room version v1 and v2. We need to do this, since we're
+	// This ensures we send EventReferences for frame version v1 and v2. We need to do this, since we're
 	// returning the proto event, which isn't modified when running `Build`.
-	switch input.RoomVersion {
-	case RoomVersionV1, RoomVersionV2:
+	switch input.FrameVersion {
+	case FrameVersionV1, FrameVersionV2:
 		proto.AuthEvents = toEventReference(event.AuthEventIDs())
 		proto.PrevEvents = toEventReference(event.PrevEventIDs())
 	}
 
 	makeJoinResponse := HandleMakeJoinResponse{
 		JoinTemplateEvent: proto,
-		RoomVersion:       input.RoomVersion,
+		FrameVersion:       input.FrameVersion,
 	}
 	return &makeJoinResponse, nil
 }
 
-func roomVersionSupported(roomVersion RoomVersion, supportedVersions []RoomVersion) bool {
+func frameVersionSupported(frameVersion FrameVersion, supportedVersions []FrameVersion) bool {
 	remoteSupportsVersion := false
 	for _, v := range supportedVersions {
-		if v == roomVersion {
+		if v == frameVersion {
 			remoteSupportsVersion = true
 			break
 		}
@@ -135,31 +135,31 @@ func roomVersionSupported(roomVersion RoomVersion, supportedVersions []RoomVersi
 	return remoteSupportsVersion
 }
 
-func noCheckRestrictedJoin(context.Context, spec.ServerName, RestrictedRoomJoinQuerier, spec.RoomID, spec.SenderID) (string, error) {
+func noCheckRestrictedJoin(context.Context, spec.ServerName, RestrictedFrameJoinQuerier, spec.FrameID, spec.SenderID) (string, error) {
 	return "", nil
 }
 
 // checkRestrictedJoin finds out whether or not we can assist in processing
-// a restricted room join. If the room version does not support restricted
+// a restricted frame join. If the frame version does not support restricted
 // joins then this function returns with no side effects. This returns:
 //   - a user ID of an authorising user, typically a user that has power to
-//     issue invites in the room, if one has been found
+//     issue invites in the frame, if one has been found
 //   - an error if there was a problem finding out if this was allowable,
-//     like if the room version isn't known or a problem happened talking to
-//     the roomserver
+//     like if the frame version isn't known or a problem happened talking to
+//     the frameserver
 func checkRestrictedJoin(
 	ctx context.Context,
 	localServerName spec.ServerName,
-	roomQuerier RestrictedRoomJoinQuerier,
-	roomID spec.RoomID, senderID spec.SenderID,
+	frameQuerier RestrictedFrameJoinQuerier,
+	frameID spec.FrameID, senderID spec.SenderID,
 ) (string, error) {
 	// Get the join rules to work out if the join rule is "restricted".
-	joinRulesEvent, err := roomQuerier.CurrentStateEvent(ctx, roomID, spec.MRoomJoinRules, "")
+	joinRulesEvent, err := frameQuerier.CurrentStateEvent(ctx, frameID, spec.MFrameJoinRules, "")
 	if err != nil {
-		return "", fmt.Errorf("roomQuerier.StateEvent: %w", err)
+		return "", fmt.Errorf("frameQuerier.StateEvent: %w", err)
 	}
 	if joinRulesEvent == nil {
-		// The join rules for the room don't restrict membership.
+		// The join rules for the frame don't restrict membership.
 		return "", nil
 	}
 	var joinRules JoinRuleContent
@@ -170,26 +170,26 @@ func checkRestrictedJoin(
 	// If the join rule isn't "restricted" or "knock_restricted" then there's nothing more to do.
 	restricted := joinRules.JoinRule == spec.Restricted || joinRules.JoinRule == spec.KnockRestricted
 	if !restricted {
-		// The join rules for the room don't restrict membership.
+		// The join rules for the frame don't restrict membership.
 		return "", nil
 	}
 
-	// If the user is already invited to the room then the join is allowed
+	// If the user is already invited to the frame then the join is allowed
 	// but we don't specify an authorised via user, since the event auth
 	// will allow the join anyway.
-	if pending, err := roomQuerier.InvitePending(ctx, roomID, senderID); err != nil {
+	if pending, err := frameQuerier.InvitePending(ctx, frameID, senderID); err != nil {
 		return "", fmt.Errorf("helpers.IsInvitePending: %w", err)
 	} else if pending {
-		// The join rules for the room don't restrict membership.
+		// The join rules for the frame don't restrict membership.
 		return "", nil
 	}
 
 	// We need to get the power levels content so that we can determine which
-	// users in the room are entitled to issue invites. We need to use one of
+	// users in the frame are entitled to issue invites. We need to use one of
 	// these users as the authorising user.
-	powerLevelsEvent, err := roomQuerier.CurrentStateEvent(ctx, roomID, spec.MRoomPowerLevels, "")
+	powerLevelsEvent, err := frameQuerier.CurrentStateEvent(ctx, frameID, spec.MFramePowerLevels, "")
 	if err != nil {
-		return "", fmt.Errorf("roomQuerier.StateEvent: %w", err)
+		return "", fmt.Errorf("frameQuerier.StateEvent: %w", err)
 	}
 	if powerLevelsEvent == nil {
 		return "", fmt.Errorf("invalid power levels event")
@@ -202,50 +202,50 @@ func checkRestrictedJoin(
 	resident := true
 	// Step through the join rules and see if the user matches any of them.
 	for _, rule := range joinRules.Allow {
-		// We only understand "m.room_membership" rules at this point in
+		// We only understand "m.frame_membership" rules at this point in
 		// time, so skip any rule that doesn't match those.
-		if rule.Type != spec.MRoomMembership {
+		if rule.Type != spec.MFrameMembership {
 			continue
 		}
 
-		// See if the room exists. If it doesn't exist or if it's a stub
-		// room entry then we can't check memberships.
-		roomID, err := spec.NewRoomID(rule.RoomID)
+		// See if the frame exists. If it doesn't exist or if it's a stub
+		// frame entry then we can't check memberships.
+		frameID, err := spec.NewFrameID(rule.FrameID)
 		if err != nil {
 			continue
 		}
 
-		// First of all work out if *we* are still in the room, otherwise
+		// First of all work out if *we* are still in the frame, otherwise
 		// it's possible that the memberships will be out of date.
-		targetRoomInfo, err := roomQuerier.RestrictedRoomJoinInfo(ctx, *roomID, senderID, localServerName)
-		if err != nil || targetRoomInfo == nil || !targetRoomInfo.LocalServerInRoom {
-			// If we aren't in the room, we can no longer tell if the room
+		targetFrameInfo, err := frameQuerier.RestrictedFrameJoinInfo(ctx, *frameID, senderID, localServerName)
+		if err != nil || targetFrameInfo == nil || !targetFrameInfo.LocalServerInFrame {
+			// If we aren't in the frame, we can no longer tell if the frame
 			// memberships are up-to-date.
 			resident = false
 			continue
 		}
 
-		// At this point we're happy that we are in the room, so now let's
-		// see if the target user is in the room.
-		// If the user is not in the room then we will skip this rule.
-		if !targetRoomInfo.UserJoinedToRoom {
+		// At this point we're happy that we are in the frame, so now let's
+		// see if the target user is in the frame.
+		// If the user is not in the frame then we will skip this rule.
+		if !targetFrameInfo.UserJoinedToFrame {
 			continue
 		}
 
-		// The user is in the room, so now we will need to authorise the
-		// join using the user ID of one of our own users in the room. Pick
+		// The user is in the frame, so now we will need to authorise the
+		// join using the user ID of one of our own users in the frame. Pick
 		// one.
-		if err != nil || len(targetRoomInfo.JoinedUsers) == 0 {
+		if err != nil || len(targetFrameInfo.JoinedUsers) == 0 {
 			// There should always be more than one join event at this point
-			// because we are gated behind GetLocalServerInRoom, but y'know,
+			// because we are gated behind GetLocalServerInFrame, but y'know,
 			// sometimes strange things happen.
 			continue
 		}
 
 		// For each of the joined users, let's see if we can get a valid
 		// membership event.
-		for _, user := range targetRoomInfo.JoinedUsers {
-			if user.Type() != spec.MRoomMember || user.StateKey() == nil {
+		for _, user := range targetFrameInfo.JoinedUsers {
+			if user.Type() != spec.MFrameMember || user.StateKey() == nil {
 				continue // shouldn't happen
 			}
 			// Only users that have the power to invite should be chosen.
@@ -254,9 +254,9 @@ func checkRestrictedJoin(
 			}
 
 			// The join rules restrict membership, our server is in the relevant
-			// rooms and the user was allowed to join because they belong to one
-			// of the allowed rooms. Return one of our own local users
-			// from within the room to use as the authorising user ID, so that it
+			// frames and the user was allowed to join because they belong to one
+			// of the allowed frames. Return one of our own local users
+			// from within the frame to use as the authorising user ID, so that it
 			// can be referred to from within the membership content.
 			return *user.StateKey(), nil
 		}
@@ -264,7 +264,7 @@ func checkRestrictedJoin(
 
 	if !resident {
 		// The join rules restrict membership but our server isn't currently
-		// joined to all of the allowed rooms, so we can't actually decide
+		// joined to all of the allowed frames, so we can't actually decide
 		// whether or not to allow the user to join. This error code should
 		// tell the joining server to try joining via another resident server
 		// instead.
@@ -272,17 +272,17 @@ func checkRestrictedJoin(
 	}
 
 	// The join rules restrict membership, our server is in the relevant
-	// rooms and the user wasn't joined to join any of the allowed rooms
-	// and therefore can't join this room.
-	return "", spec.Forbidden("You are not joined to any matching rooms.")
+	// frames and the user wasn't joined to join any of the allowed frames
+	// and therefore can't join this frame.
+	return "", spec.Forbidden("You are not joined to any matching frames.")
 }
 
 type HandleSendJoinInput struct {
 	Context                   context.Context
-	RoomID                    spec.RoomID
+	FrameID                    spec.FrameID
 	EventID                   string
 	JoinEvent                 spec.RawJSON
-	RoomVersion               RoomVersion     // The room version for the room being joined
+	FrameVersion               FrameVersion     // The frame version for the frame being joined
 	RequestOrigin             spec.ServerName // The server that sent the /make_join federation request
 	LocalServerName           spec.ServerName // The name of this local server
 	KeyID                     KeyID
@@ -316,9 +316,9 @@ func HandleSendJoin(input HandleSendJoinInput) (*HandleSendJoinResponse, error) 
 		panic("Missing valid StoreSenderID")
 	}
 
-	verImpl, err := GetRoomVersion(input.RoomVersion)
+	verImpl, err := GetFrameVersion(input.FrameVersion)
 	if err != nil {
-		return nil, spec.UnsupportedRoomVersion(fmt.Sprintf("QueryRoomVersionForRoom returned unknown room version: %s", input.RoomVersion))
+		return nil, spec.UnsupportedFrameVersion(fmt.Sprintf("QueryFrameVersionForFrame returned unknown frame version: %s", input.FrameVersion))
 	}
 
 	event, err := verImpl.NewEventFromUntrustedJSON(input.JoinEvent)
@@ -335,7 +335,7 @@ func HandleSendJoin(input HandleSendJoinInput) (*HandleSendJoinResponse, error) 
 	}
 
 	// validate the mxid_mapping of the event
-	if input.RoomVersion == RoomVersionPseudoIDs {
+	if input.FrameVersion == FrameVersionPseudoIDs {
 		// validate the signature first
 		if err = validateMXIDMappingSignature(input.Context, event, input.Verifier, verImpl); err != nil {
 			return nil, spec.Forbidden(err.Error())
@@ -346,8 +346,8 @@ func HandleSendJoin(input HandleSendJoinInput) (*HandleSendJoinResponse, error) 
 		if err != nil {
 			return nil, err
 		}
-		// store the user room public key -> userID mapping
-		if err = input.StoreSenderIDFromPublicID(input.Context, mapping.UserRoomKey, mapping.UserID, input.RoomID); err != nil {
+		// store the user frame public key -> userID mapping
+		if err = input.StoreSenderIDFromPublicID(input.Context, mapping.UserFrameKey, mapping.UserID, input.FrameID); err != nil {
 			return nil, err
 		}
 	}
@@ -355,27 +355,27 @@ func HandleSendJoin(input HandleSendJoinInput) (*HandleSendJoinResponse, error) 
 	// Check that the sender belongs to the server that is sending us
 	// the request. By this point we've already asserted that the sender
 	// and the state key are equal so we don't need to check both.
-	sender, err := input.UserIDQuerier(input.RoomID, event.SenderID())
+	sender, err := input.UserIDQuerier(input.FrameID, event.SenderID())
 	if err != nil {
 		return nil, spec.Forbidden("The sender of the join is invalid")
 	} else if sender.Domain() != input.RequestOrigin {
 		return nil, spec.Forbidden("The sender does not match the server that originated the request")
 	}
 
-	// In pseudoID rooms we don't need to hit federation endpoints to get e.g. signing keys,
+	// In pseudoID frames we don't need to hit federation endpoints to get e.g. signing keys,
 	// so we can replace the verifier with a more simple one which uses the senderID to verify the event.
 	toVerify := sender.Domain()
-	if input.RoomVersion == RoomVersionPseudoIDs {
+	if input.FrameVersion == FrameVersionPseudoIDs {
 		input.Verifier = JSONVerifierSelf{}
 		toVerify = spec.ServerName(event.SenderID())
 	}
 
-	// Check that the room ID is correct.
-	if event.RoomID() != input.RoomID.String() {
+	// Check that the frame ID is correct.
+	if event.FrameID() != input.FrameID.String() {
 		return nil, spec.BadJSON(
 			fmt.Sprintf(
-				"The room ID in the request path (%q) must match the room ID in the join event JSON (%q)",
-				input.RoomID.String(), event.RoomID(),
+				"The frame ID in the request path (%q) must match the frame ID in the join event JSON (%q)",
+				input.FrameID.String(), event.FrameID(),
 			),
 		)
 	}
@@ -421,10 +421,10 @@ func HandleSendJoin(input HandleSendJoinInput) (*HandleSendJoinResponse, error) 
 		return nil, spec.Forbidden("Signature check failed: " + verifyResults[0].Error.Error())
 	}
 
-	// Check if the user is already in the room. If they're already in then
-	// there isn't much point in sending another join event into the room.
+	// Check if the user is already in the frame. If they're already in then
+	// there isn't much point in sending another join event into the frame.
 	// Also check to see if they are banned: if they are then we reject them.
-	existingMembership, err := input.MembershipQuerier.CurrentMembership(input.Context, input.RoomID, event.SenderID())
+	existingMembership, err := input.MembershipQuerier.CurrentMembership(input.Context, input.FrameID, event.SenderID())
 	if err != nil {
 		return nil, spec.InternalServerError{Err: "internal server error"}
 	}
