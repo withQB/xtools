@@ -86,7 +86,7 @@ func GenerateStrippedState(
 	ctx context.Context, frameID spec.FrameID, stateQuerier StateQuerier,
 ) ([]InviteStrippedState, error) {
 	// "If they are set on the frame, at least the state for m.frame.avatar, m.frame.canonical_alias, m.frame.join_rules, and m.frame.name SHOULD be included."
-	// https://matrix.org/docs/spec/client_server/r0.6.0#m-frame-member
+	// m-frame-member
 	stateWanted := []StateKeyTuple{}
 	for _, t := range []string{
 		spec.MFrameName, spec.MFrameCanonicalAlias,

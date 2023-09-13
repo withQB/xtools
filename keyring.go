@@ -68,7 +68,6 @@ func StrictValiditySignatureCheck(atTs, validUntil spec.Timestamp) bool {
 	}
 	// Servers MUST use the lesser of valid_until_ts and 7 days into the
 	// future when determining if a key is valid.
-	// https://matrix.org/docs/spec/frames/v5#signing-key-validity-period
 	sevenDaysFuture := time.Now().Add(time.Hour * 24 * 7)
 	validUntilTS := validUntil.Time()
 	if validUntilTS.After(sevenDaysFuture) {
@@ -130,7 +129,7 @@ type KeyDatabase interface {
 	StoreKeys(ctx context.Context, results map[PublicKeyLookupRequest]PublicKeyLookupResult) error
 }
 
-// A KeyRing stores keys for matrix servers and provides methods for verifying JSON messages.
+// A KeyRing stores keys for coddy servers and provides methods for verifying JSON messages.
 type KeyRing struct {
 	KeyFetchers []KeyFetcher
 	KeyDatabase KeyDatabase
@@ -140,7 +139,7 @@ type KeyRing struct {
 // A JSON message is valid for a server if the message has at least one valid
 // signature from that server.
 type VerifyJSONRequest struct {
-	// The name of the matrix server to check for a signature for.
+	// The name of the coddy server to check for a signature for.
 	ServerName spec.ServerName
 	// The millisecond posix timestamp the message needs to be valid at.
 	AtTS spec.Timestamp
@@ -183,7 +182,7 @@ func (k KeyRing) VerifyJSONs(ctx context.Context, requests []VerifyJSONRequest) 
 	for i := range requests {
 		ids, err := ListKeyIDs(string(requests[i].ServerName), requests[i].Message)
 		if err != nil {
-			results[i].Error = fmt.Errorf("gomatrixserverlib: error extracting key IDs")
+			results[i].Error = fmt.Errorf("gocoddyserverlib: error extracting key IDs")
 			continue
 		}
 		for _, keyID := range ids {
@@ -193,7 +192,7 @@ func (k KeyRing) VerifyJSONs(ctx context.Context, requests []VerifyJSONRequest) 
 		}
 		if len(keyIDs[i]) == 0 {
 			results[i].Error = fmt.Errorf(
-				"gomatrixserverlib: not signed by %q with a supported algorithm", requests[i].ServerName,
+				"gocoddyserverlib: not signed by %q with a supported algorithm", requests[i].ServerName,
 			)
 			continue
 		}
@@ -202,7 +201,7 @@ func (k KeyRing) VerifyJSONs(ctx context.Context, requests []VerifyJSONRequest) 
 		// This will be overwritten if one of the signature checks fails.
 		// Therefore this will only remain in place if the keys couldn't be downloaded.
 		results[i].Error = fmt.Errorf(
-			"gomatrixserverlib: could not download key for %q", requests[i].ServerName,
+			"gocoddyserverlib: could not download key for %q", requests[i].ServerName,
 		)
 	}
 
@@ -352,7 +351,7 @@ func (k *KeyRing) checkUsingKeys(
 				// The key wasn't valid at the timestamp we needed it to be valid at.
 				// So skip onto the next key.
 				results[i].Error = fmt.Errorf(
-					"gomatrixserverlib: key with ID %q for %q not valid at %d",
+					"gocoddyserverlib: key with ID %q for %q not valid at %d",
 					keyID, requests[i].ServerName, requests[i].AtTS,
 				)
 				continue
@@ -397,8 +396,8 @@ func (v JSONVerifierSelf) VerifyJSONs(ctx context.Context, requests []VerifyJSON
 }
 
 type KeyClient interface {
-	GetServerKeys(ctx context.Context, matrixServer spec.ServerName) (ServerKeys, error)
-	LookupServerKeys(ctx context.Context, matrixServer spec.ServerName, keyRequests map[PublicKeyLookupRequest]spec.Timestamp) ([]ServerKeys, error)
+	GetServerKeys(ctx context.Context, coddyServer spec.ServerName) (ServerKeys, error)
+	LookupServerKeys(ctx context.Context, coddyServer spec.ServerName, keyRequests map[PublicKeyLookupRequest]spec.Timestamp) ([]ServerKeys, error)
 }
 
 // A PerspectiveKeyFetcher fetches server keys from a single perspective server.
@@ -422,7 +421,7 @@ func (p *PerspectiveKeyFetcher) FetchKeys(
 ) (map[PublicKeyLookupRequest]PublicKeyLookupResult, error) {
 	serverKeys, err := p.Client.LookupServerKeys(ctx, p.PerspectiveServerName, requests)
 	if err != nil {
-		return nil, fmt.Errorf("gomatrixserverlib: unable to lookup server keys: %w", err)
+		return nil, fmt.Errorf("gocoddyserverlib: unable to lookup server keys: %w", err)
 	}
 
 	results := map[PublicKeyLookupRequest]PublicKeyLookupResult{}
@@ -432,7 +431,7 @@ func (p *PerspectiveKeyFetcher) FetchKeys(
 		keyIDs, err := ListKeyIDs(string(p.PerspectiveServerName), keys.Raw)
 		if err != nil {
 			// The response from the perspective server was corrupted.
-			return nil, fmt.Errorf("gomatrixserverlib: unable to list key IDs: %w", err)
+			return nil, fmt.Errorf("gocoddyserverlib: unable to list key IDs: %w", err)
 		}
 		for _, keyID := range keyIDs {
 			perspectiveKey, ok := p.PerspectiveServerKeys[keyID]
@@ -443,24 +442,24 @@ func (p *PerspectiveKeyFetcher) FetchKeys(
 			if err := VerifyJSON(string(p.PerspectiveServerName), keyID, perspectiveKey, keys.Raw); err != nil {
 				// An invalid signature is very bad since it means we have a
 				// problem talking to the perspective server.
-				return nil, fmt.Errorf("gomatrixserverlib: unable to verify response: %w", err)
+				return nil, fmt.Errorf("gocoddyserverlib: unable to verify response: %w", err)
 			}
 			valid = true
 			break
 		}
 		if !valid {
 			// This means we don't have a known signature from the perspective server.
-			return nil, fmt.Errorf("gomatrixserverlib: not signed with a known key for the perspective server")
+			return nil, fmt.Errorf("gocoddyserverlib: not signed with a known key for the perspective server")
 		}
 
 		// Check that the keys are valid for the server they claim to be
 		checks, _ := CheckKeys(keys.ServerName, time.Unix(0, 0), keys)
 		if !checks.AllChecksOK {
 			// This is bad because it means that the perspective server was trying to feed us an invalid response.
-			return nil, fmt.Errorf("gomatrixserverlib: key response from perspective server failed checks")
+			return nil, fmt.Errorf("gocoddyserverlib: key response from perspective server failed checks")
 		}
 
-		// TODO (matrix-org/dendrite#345): What happens if the same key ID
+		// TODO (coddy-org/dendrite#345): What happens if the same key ID
 		// appears in multiple responses?
 		// We should probably take the response with the highest valid_until_ts.
 		mapServerKeysToPublicKeyLookupResult(keys, results)
@@ -586,12 +585,12 @@ func (d *DirectKeyFetcher) fetchKeysForServer(
 	// Check that the keys are valid for the server.
 	checks, _ := CheckKeys(serverName, time.Unix(0, 0), keys)
 	if !checks.AllChecksOK {
-		return nil, fmt.Errorf("gomatrixserverlib: key response direct from %q failed checks", serverName)
+		return nil, fmt.Errorf("gocoddyserverlib: key response direct from %q failed checks", serverName)
 	}
 
 	results := map[PublicKeyLookupRequest]PublicKeyLookupResult{}
 
-	// TODO (matrix-org/dendrite#345): What happens if the same key ID
+	// TODO (coddy-org/dendrite#345): What happens if the same key ID
 	// appears in multiple responses? We should probably reject the response.
 	mapServerKeysToPublicKeyLookupResult(keys, results)
 
@@ -620,17 +619,17 @@ func (d *DirectKeyFetcher) fetchNotaryKeysForServer(
 		}
 	}
 	if !found {
-		return nil, fmt.Errorf("gomatrixserverlib: notary key response contained no results for %q", serverName)
+		return nil, fmt.Errorf("gocoddyserverlib: notary key response contained no results for %q", serverName)
 	}
 	// Check that the keys are valid for the server.
 	checks, _ := CheckKeys(serverName, time.Unix(0, 0), keys)
 	if !checks.AllChecksOK {
-		return nil, fmt.Errorf("gomatrixserverlib: notary key response direct from %q failed checks", serverName)
+		return nil, fmt.Errorf("gocoddyserverlib: notary key response direct from %q failed checks", serverName)
 	}
 
 	results := map[PublicKeyLookupRequest]PublicKeyLookupResult{}
 
-	// TODO (matrix-org/dendrite#345): What happens if the same key ID
+	// TODO (coddy-org/dendrite#345): What happens if the same key ID
 	// appears in multiple responses? We should probably reject the response.
 	mapServerKeysToPublicKeyLookupResult(keys, results)
 

@@ -12,7 +12,7 @@ import (
 )
 
 // An EventBuilder is used to build a new event.
-// These can be exchanged between matrix servers in the federation APIs when
+// These can be exchanged between coddy servers in the federation APIs when
 // joining or leaving a frame.
 type EventBuilder struct {
 	// The sender ID of the user sending the event.
@@ -152,7 +152,7 @@ func (eb *EventBuilder) Build(
 	case EventFormatV1:
 		// If either prev_events or auth_events are nil slices then Go will
 		// marshal them into 'null' instead of '[]', which is bad. Since the
-		// EventBuilder struct is instantiated outside of gomatrixserverlib
+		// EventBuilder struct is instantiated outside of gocoddyserverlib
 		// let's just make sure that they haven't been left as nil slices.
 		eventStruct.PrevEvents = toEventReference(eventStruct.PrevEvents)
 		eventStruct.AuthEvents = toEventReference(eventStruct.AuthEvents)
@@ -174,7 +174,7 @@ func (eb *EventBuilder) Build(
 	}
 
 	if eventStruct.StateKey != nil {
-		// In early versions of the matrix protocol state events
+		// In early versions of the coddy protocol state events
 		// had a "prev_state" key that listed the state events with
 		// the same type and state key that this event replaced.
 		// This was later dropped from the protocol.

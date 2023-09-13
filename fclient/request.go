@@ -32,11 +32,10 @@ type FederationRequest struct {
 	}
 }
 
-// NewFederationRequest creates a matrix request. Takes an HTTP method, a
+// NewFederationRequest creates a coddy request. Takes an HTTP method, a
 // destination homeserver and a request path which can have a query string.
-// The destination is the name of a matrix homeserver.
+// The destination is the name of a coddy homeserver.
 // The request path must begin with a slash.
-// Eg. NewFederationRequest("GET", "matrix.org", "/_matrix/federation/v1/send/123")
 func NewFederationRequest(method string, origin, destination spec.ServerName, requestURI string) FederationRequest {
 	var r FederationRequest
 	r.fields.Origin = origin
@@ -88,8 +87,8 @@ func (r *FederationRequest) RequestURI() string {
 	return r.fields.RequestURI
 }
 
-// Sign the matrix request with an ed25519 key.
-// Uses the algorithm specified https://matrix.org/docs/spec/server_server/unstable.html#request-authentication
+// Sign the coddy request with an ed25519 key.
+// Uses the algorithm specified
 // Updates the request with the signature in place.
 // Returns an error if there was a problem signing the request.
 func (r *FederationRequest) Sign(serverName spec.ServerName, keyID xtools.KeyID, privateKey ed25519.PrivateKey) error {
@@ -113,10 +112,10 @@ func (r *FederationRequest) Sign(serverName spec.ServerName, keyID xtools.KeyID,
 	return json.Unmarshal(signedData, &r.fields)
 }
 
-// HTTPRequest constructs an net/http.Request for this matrix request.
+// HTTPRequest constructs an net/http.Request for this coddy request.
 // The request can be passed to net/http.Client.Do().
 func (r *FederationRequest) HTTPRequest() (*http.Request, error) {
-	urlStr := fmt.Sprintf("matrix://%s%s", r.fields.Destination, r.fields.RequestURI)
+	urlStr := fmt.Sprintf("coddy://%s%s", r.fields.Destination, r.fields.RequestURI)
 
 	var content io.Reader
 	if r.fields.Content != nil {
@@ -285,7 +284,6 @@ func readHTTPRequest(req *http.Request) (*FederationRequest, error) { // nolint:
 			return nil, fmt.Errorf("xtools: The request must be \"application/json\" not %q", mimetype)
 		}
 		// check for invalid utf-8
-		// https://matrix.org/docs/spec/server_server/r0.1.4#api-standards
 		if !utf8.Valid(content) {
 			return nil, fmt.Errorf("xtools: The request contained invalid UTF-8")
 		}

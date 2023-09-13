@@ -565,7 +565,7 @@ func (r *stateResolverV2) reverseTopologicalOrdering(events []PDU, order Topolog
 			result = append(result, s.event)
 		}
 	default:
-		panic(fmt.Sprintf("gomatrixserverlib.reverseTopologicalOrdering unknown Ordering %d", order))
+		panic(fmt.Sprintf("gocoddyserverlib.reverseTopologicalOrdering unknown Ordering %d", order))
 	}
 	return result
 }

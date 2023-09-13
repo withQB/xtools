@@ -11,20 +11,20 @@ import (
 	"github.com/withqb/xtools/spec"
 )
 
-// A RespSend is the content of a response to PUT /_matrix/federation/v1/send/{txnID}/
+// A RespSend is the content of a response to PUT /_coddy/federation/v1/send/{txnID}/
 type RespSend struct {
 	// Map of event ID to the result of processing that event.
 	PDUs map[string]PDUResult `json:"pdus"`
 }
 
-// A PDUResult is the result of processing a matrix frame event.
+// A PDUResult is the result of processing a coddy frame event.
 type PDUResult struct {
 	// If not empty then this is a human readable description of a problem
 	// encountered processing an event.
 	Error string `json:"error,omitempty"`
 }
 
-// A RespStateIDs is the content of a response to GET /_matrix/federation/v1/state_ids/{frameID}/{eventID}
+// A RespStateIDs is the content of a response to GET /_coddy/federation/v1/state_ids/{frameID}/{eventID}
 type RespStateIDs struct {
 	// A list of state event IDs for the state of the frame before the requested event.
 	StateEventIDs []string `json:"pdu_ids"`
@@ -40,7 +40,7 @@ func (r RespStateIDs) GetAuthEventIDs() []string {
 	return r.AuthEventIDs
 }
 
-// A RespState is the content of a response to GET /_matrix/federation/v1/state/{frameID}/{eventID}
+// A RespState is the content of a response to GET /_coddy/federation/v1/state/{frameID}/{eventID}
 type RespState struct {
 	// A list of events giving the state of the frame before the request event.
 	StateEvents xtools.EventJSONs `json:"pdus"`
@@ -56,7 +56,7 @@ func (r *RespState) GetAuthEvents() xtools.EventJSONs {
 	return r.AuthEvents
 }
 
-// A RespPeek is the content of a response to GET /_matrix/federation/v1/peek/{frameID}/{peekID}
+// A RespPeek is the content of a response to GET /_coddy/federation/v1/peek/{frameID}/{peekID}
 type RespPeek struct {
 	// How often should we renew the peek?
 	RenewalInterval int64 `json:"renewal_interval"`
@@ -80,7 +80,6 @@ func (r *RespPeek) GetAuthEvents() xtools.EventJSONs {
 }
 
 // MissingEvents represents a request for missing events.
-// https://matrix.org/docs/spec/server_server/r0.1.3#post-matrix-federation-v1-get-missing-events-frameid
 type MissingEvents struct {
 	// The maximum number of events to retrieve.
 	Limit int `json:"limit"`
@@ -92,13 +91,13 @@ type MissingEvents struct {
 	LatestEvents []string `json:"latest_events"`
 }
 
-// A RespMissingEvents is the content of a response to GET /_matrix/federation/v1/get_missing_events/{frameID}
+// A RespMissingEvents is the content of a response to GET /_coddy/federation/v1/get_missing_events/{frameID}
 type RespMissingEvents struct {
 	// The returned set of missing events.
 	Events xtools.EventJSONs `json:"events"`
 }
 
-// RespPublicFrames is the content of a response to GET /_matrix/federation/v1/publicFrames
+// RespPublicFrames is the content of a response to GET /_coddy/federation/v1/publicFrames
 type RespPublicFrames struct {
 	// A paginated chunk of public frames.
 	Chunk []PublicFrame `json:"chunk"`
@@ -111,7 +110,7 @@ type RespPublicFrames struct {
 }
 
 // PublicFrame stores the info of a frame returned by
-// GET /_matrix/federation/v1/publicFrames
+// GET /_coddy/federation/v1/publicFrames
 type PublicFrame struct {
 	// Aliases of the frame. May be empty.
 	Aliases []string `json:"aliases,omitempty"`
@@ -133,7 +132,7 @@ type PublicFrame struct {
 	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
-// A RespEventAuth is the content of a response to GET /_matrix/federation/v1/event_auth/{frameID}/{eventID}
+// A RespEventAuth is the content of a response to GET /_coddy/federation/v1/event_auth/{frameID}/{eventID}
 type RespEventAuth struct {
 	// A list of events needed to authenticate the state events.
 	AuthEvents xtools.EventJSONs `json:"auth_chain"`
@@ -144,8 +143,8 @@ type respStateFields struct {
 	AuthEvents  xtools.EventJSONs `json:"auth_chain"`
 }
 
-// RespUserDevices contains a response to /_matrix/federation/v1/user/devices/{userID}
-// https://matrix.org/docs/spec/server_server/latest#get-matrix-federation-v1-user-devices-userid
+// RespUserDevices contains a response to /_coddy/federation/v1/user/devices/{userID}
+// get-coddy-federation-v1-user-devices-userid
 type RespUserDevices struct {
 	UserID         string           `json:"user_id"`
 	StreamID       int64            `json:"stream_id"`
@@ -186,7 +185,7 @@ func (r *RespUserDevices) UnmarshalJSON(data []byte) error {
 }
 
 // RespUserDevice are embedded in RespUserDevices
-// https://matrix.org/docs/spec/server_server/latest#get-matrix-federation-v1-user-devices-userid
+// get-coddy-federation-v1-user-devices-userid
 type RespUserDevice struct {
 	DeviceID    string             `json:"device_id"`
 	DisplayName string             `json:"device_display_name"`
@@ -194,7 +193,7 @@ type RespUserDevice struct {
 }
 
 // RespUserDeviceKeys are embedded in RespUserDevice
-// https://matrix.org/docs/spec/server_server/latest#get-matrix-federation-v1-user-devices-userid
+// get-coddy-federation-v1-user-devices-userid
 type RespUserDeviceKeys struct {
 	UserID     string   `json:"user_id"`
 	DeviceID   string   `json:"device_id"`
@@ -244,11 +243,10 @@ func (r RespState) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// A RespMakeJoin is the content of a response to GET /_matrix/federation/v2/make_join/{frameID}/{userID}
+// A RespMakeJoin is the content of a response to GET /_coddy/federation/v2/make_join/{frameID}/{userID}
 type RespMakeJoin struct {
 	// An incomplete m.frame.member event for a user on the requesting server
 	// generated by the responding server.
-	// See https://matrix.org/docs/spec/server_server/unstable.html#joining-frames
 	JoinEvent   xtools.ProtoEvent  `json:"event"`
 	FrameVersion xtools.FrameVersion `json:"frame_version"`
 }
@@ -261,7 +259,7 @@ func (r *RespMakeJoin) GetFrameVersion() xtools.FrameVersion {
 	return r.FrameVersion
 }
 
-// A RespSendJoin is the content of a response to PUT /_matrix/federation/v2/send_join/{frameID}/{eventID}
+// A RespSendJoin is the content of a response to PUT /_coddy/federation/v2/send_join/{frameID}/{eventID}
 type RespSendJoin struct {
 	// A list of events giving the state of the frame before the request event.
 	StateEvents xtools.EventJSONs `json:"state"`
@@ -329,17 +327,16 @@ func (r RespSendJoin) MarshalJSON() ([]byte, error) {
 	return json.Marshal(partialJoinFields)
 }
 
-// A RespSendKnock is the content of a response to PUT /_matrix/federation/v2/send_knock/{frameID}/{eventID}
+// A RespSendKnock is the content of a response to PUT /_coddy/federation/v2/send_knock/{frameID}/{eventID}
 type RespSendKnock struct {
 	// A list of stripped state events to help the initiator of the knock identify the frame.
 	KnockFrameState []xtools.InviteStrippedState `json:"knock_frame_state"`
 }
 
-// A RespMakeKnock is the content of a response to GET /_matrix/federation/v2/make_knock/{frameID}/{userID}
+// A RespMakeKnock is the content of a response to GET /_coddy/federation/v2/make_knock/{frameID}/{userID}
 type RespMakeKnock struct {
 	// An incomplete m.frame.member event for a user on the requesting server
 	// generated by the responding server.
-	// See https://spec.matrix.org/v1.3/server-server-api/#knocking-upon-a-frame
 	KnockEvent  xtools.ProtoEvent  `json:"event"`
 	FrameVersion xtools.FrameVersion `json:"frame_version"`
 }
@@ -360,35 +357,33 @@ type respSendJoinPartialStateFields struct {
 	ServersInFrame  []string `json:"servers_in_frame"`
 }
 
-// A RespMakeLeave is the content of a response to GET /_matrix/federation/v2/make_leave/{frameID}/{userID}
+// A RespMakeLeave is the content of a response to GET /_coddy/federation/v2/make_leave/{frameID}/{userID}
 type RespMakeLeave struct {
 	// An incomplete m.frame.member event for a user on the requesting server
 	// generated by the responding server.
-	// See https://matrix.org/docs/spec/server_server/r0.1.1.html#get-matrix-federation-v1-make-leave-frameid-userid
 	LeaveEvent xtools.ProtoEvent `json:"event"`
 	// The frame version that we're trying to leave.
 	FrameVersion xtools.FrameVersion `json:"frame_version"`
 }
 
-// A RespDirectory is the content of a response to GET  /_matrix/federation/v1/query/directory
+// A RespDirectory is the content of a response to GET  /_coddy/federation/v1/query/directory
 // This is returned when looking up a frame alias from a remote server.
-// See https://matrix.org/docs/spec/server_server/unstable.html#directory
 type RespDirectory struct {
-	// The matrix frame ID the frame alias corresponds to.
+	// The coddy frame ID the frame alias corresponds to.
 	FrameID string `json:"frame_id"`
-	// A list of matrix servers that the directory server thinks could be used
+	// A list of coddy servers that the directory server thinks could be used
 	// to join the frame. The joining server may need to try multiple servers
 	// before it finds one that it can use to join the frame.
 	Servers []spec.ServerName `json:"servers"`
 }
 
-// RespProfile is the content of a response to GET /_matrix/federation/v1/query/profile
+// RespProfile is the content of a response to GET /_coddy/federation/v1/query/profile
 type RespProfile struct {
 	DisplayName string `json:"displayname,omitempty"`
 	AvatarURL   string `json:"avatar_url,omitempty"`
 }
 
-// RespInvite is the content of a response to PUT /_matrix/federation/v1/invite/{frameID}/{eventID}
+// RespInvite is the content of a response to PUT /_coddy/federation/v1/invite/{frameID}/{eventID}
 type RespInvite struct {
 	// The invite event signed by recipient server.
 	Event spec.RawJSON `json:"event"`
@@ -398,7 +393,7 @@ type RespInvite struct {
 func (r RespInvite) MarshalJSON() ([]byte, error) {
 	// The wire format of a RespInvite is slightly is sent as the second element
 	// of a two element list where the first element is the constant integer 200.
-	// (This protocol oddity is the result of a typo in the synapse matrix
+	// (This protocol oddity is the result of a typo in the synapse coddy
 	//  server, and is preserved to maintain compatibility.)
 	return json.Marshal([]interface{}{200, respInviteFields(r)})
 }
@@ -422,27 +417,27 @@ type respInviteFields struct {
 	Event spec.RawJSON `json:"event"`
 }
 
-// RespInvite is the content of a response to PUT /_matrix/federation/v2/invite/{frameID}/{eventID}
+// RespInvite is the content of a response to PUT /_coddy/federation/v2/invite/{frameID}/{eventID}
 type RespInviteV2 struct {
 	// The invite event signed by recipient server.
 	Event spec.RawJSON `json:"event"`
 }
 
-// RespClaimKeys is the response for https://matrix.org/docs/spec/server_server/latest#post-matrix-federation-v1-user-keys-claim
+// RespClaimKeys is the response for post-coddy-federation-v1-user-keys-claim
 type RespClaimKeys struct {
 	// Required. One-time keys for the queried devices. A map from user ID, to a map from devices to a map
 	// from <algorithm>:<key_id> to the key object or a string.
 	OneTimeKeys map[string]map[string]map[string]json.RawMessage `json:"one_time_keys"`
 }
 
-// RespQueryKeys is the response for https://matrix.org/docs/spec/server_server/latest#post-matrix-federation-v1-user-keys-query
+// RespQueryKeys is the response for post-coddy-federation-v1-user-keys-query
 type RespQueryKeys struct {
 	DeviceKeys      map[string]map[string]DeviceKeys `json:"device_keys"`
 	MasterKeys      map[string]CrossSigningKey       `json:"master_keys"`
 	SelfSigningKeys map[string]CrossSigningKey       `json:"self_signing_keys"`
 }
 
-// DeviceKeys as per https://matrix.org/docs/spec/server_server/latest#post-matrix-federation-v1-user-keys-query
+// DeviceKeys as per post-coddy-federation-v1-user-keys-query
 type DeviceKeys struct {
 	RespUserDeviceKeys
 	// Additional data added to the device key information by intermediate servers, and not covered by the signatures.
@@ -467,7 +462,6 @@ func (s DeviceKeys) Value() (driver.Value, error) {
 }
 
 // A Version is a struct that matches the version response from a Matrix homeserver. See
-// https://matrix.org/docs/spec/server_server/r0.1.1.html#get-matrix-federation-v1-version
 type Version struct {
 	// Server is a struct containing the homserver version values
 	Server struct {
@@ -480,7 +474,6 @@ type Version struct {
 }
 
 // MSC2836EventRelationshipsRequest is a request to /event_relationships from
-// https://github.com/matrix-org/matrix-doc/blob/kegan/msc/threading/proposals/2836-threading.md
 // nolint:maligned
 type MSC2836EventRelationshipsRequest struct {
 	EventID         string `json:"event_id"`
@@ -497,7 +490,7 @@ type MSC2836EventRelationshipsRequest struct {
 }
 
 // NewMSC2836EventRelationshipsRequest creates a new MSC2836 /event_relationships request with defaults set.
-// https://github.com/matrix-org/matrix-doc/blob/kegan/msc/threading/proposals/2836-threading.md
+// https://github.com/coddy-org/coddy-doc/blob/kegan/msc/threading/proposals/2836-threading.md
 func NewMSC2836EventRelationshipsRequest(body io.Reader) (*MSC2836EventRelationshipsRequest, error) {
 	var relation MSC2836EventRelationshipsRequest
 	relation.Defaults()
@@ -520,7 +513,7 @@ func (r *MSC2836EventRelationshipsRequest) Defaults() {
 }
 
 // MSC2836EventRelationshipsResponse is a response to /event_relationships from
-// https://github.com/matrix-org/matrix-doc/blob/kegan/msc/threading/proposals/2836-threading.md
+// https://github.com/coddy-org/coddy-doc/blob/kegan/msc/threading/proposals/2836-threading.md
 type MSC2836EventRelationshipsResponse struct {
 	Events    xtools.EventJSONs `json:"events"`
 	NextBatch string            `json:"next_batch"`
@@ -537,7 +530,7 @@ type FrameHierarchyFrame struct {
 }
 
 // FrameHierarchyResponse is the HTTP response body for the federation /unstable/spaces/{frameID} endpoint
-// See https://github.com/matrix-org/matrix-doc/pull/2946
+// See https://github.com/coddy-org/coddy-doc/pull/2946
 type FrameHierarchyResponse struct {
 	Frame                 FrameHierarchyFrame   `json:"frame"`
 	Children             []FrameHierarchyFrame `json:"children"`

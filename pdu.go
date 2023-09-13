@@ -67,16 +67,16 @@ func ToPDUs[T PDU](events []T) []PDU {
 // A StateKeyTuple is the combination of an event type and an event state key.
 // It is often used as a key in maps.
 type StateKeyTuple struct {
-	// The "type" key of a matrix event.
+	// The "type" key of a coddy event.
 	EventType string
-	// The "state_key" of a matrix event.
-	// The empty string is a legitimate value for the "state_key" in matrix
+	// The "state_key" of a coddy event.
+	// The empty string is a legitimate value for the "state_key" in coddy
 	// so take care to initialise this field lest you accidentally request a
 	// "state_key" with the go default of the empty string.
 	StateKey string
 }
 
-// An eventReference is a reference to a matrix event.
+// An eventReference is a reference to a coddy event.
 type eventReference struct {
 	// The event ID of the event.
 	EventID string
@@ -91,16 +91,16 @@ func (er *eventReference) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if len(tuple) != 2 {
-		return fmt.Errorf("gomatrixserverlib: invalid event reference, invalid length: %d != 2", len(tuple))
+		return fmt.Errorf("gocoddyserverlib: invalid event reference, invalid length: %d != 2", len(tuple))
 	}
 	if err := json.Unmarshal(tuple[0], &er.EventID); err != nil {
-		return fmt.Errorf("gomatrixserverlib: invalid event reference, first element is invalid: %q %v", string(tuple[0]), err)
+		return fmt.Errorf("gocoddyserverlib: invalid event reference, first element is invalid: %q %v", string(tuple[0]), err)
 	}
 	var hashes struct {
 		SHA256 spec.Base64Bytes `json:"sha256"`
 	}
 	if err := json.Unmarshal(tuple[1], &hashes); err != nil {
-		return fmt.Errorf("gomatrixserverlib: invalid event reference, second element is invalid: %q %v", string(tuple[1]), err)
+		return fmt.Errorf("gocoddyserverlib: invalid event reference, second element is invalid: %q %v", string(tuple[1]), err)
 	}
 	er.EventSHA256 = hashes.SHA256
 	return nil

@@ -40,7 +40,7 @@ func NewEventsLoader(frameVer FrameVersion, keyRing JSONVerifier, stateProvider 
 }
 
 // LoadAndVerify loads untrusted events and verifies them.
-// Checks performed are outlined at https://matrix.org/docs/spec/server_server/latest#checks-performed-on-receipt-of-a-pdu
+// Checks performed are outlined at checks-performed-on-receipt-of-a-pdu
 // The length of the returned slice will always equal the length of rawEvents.
 // The order of the returned events depends on `sortOrder`. The events are reverse topologically sorted by the ordering specified. However,
 // in order to sort the events must be loaded which could fail. For those events which fail to be loaded, they will
@@ -82,7 +82,7 @@ func (l *EventsLoader) LoadAndVerify(ctx context.Context, rawEvents []json.RawMe
 	// 2. Passes signature checks, otherwise it is dropped.
 	failures := VerifyAllEventSignatures(ctx, events, l.keyRing, userIDForSender)
 	if len(failures) != len(events) {
-		return nil, fmt.Errorf("gomatrixserverlib: bulk event signature verification length mismatch: %d != %d", len(failures), len(events))
+		return nil, fmt.Errorf("gocoddyserverlib: bulk event signature verification length mismatch: %d != %d", len(failures), len(events))
 	}
 	for i := range events {
 		h := events[i]

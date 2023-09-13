@@ -15,7 +15,7 @@ type MissingAuthEventError struct {
 
 func (e MissingAuthEventError) Error() string {
 	return fmt.Sprintf(
-		"gomatrixserverlib: missing auth event with ID %s for event %s",
+		"gocoddyserverlib: missing auth event with ID %s for event %s",
 		e.AuthEventID, e.ForEventID,
 	)
 }
@@ -25,7 +25,7 @@ type BadJSONError struct {
 }
 
 func (e BadJSONError) Error() string {
-	return fmt.Sprintf("gomatrixserverlib: bad JSON: %s", e.err.Error())
+	return fmt.Sprintf("gocoddyserverlib: bad JSON: %s", e.err.Error())
 }
 
 func (e BadJSONError) Unwrap() error {

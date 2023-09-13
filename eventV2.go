@@ -30,7 +30,7 @@ func (e *eventV2) AuthEventIDs() []string {
 // MarshalJSON implements json.Marshaller
 func (e *eventV2) MarshalJSON() ([]byte, error) {
 	if e.eventJSON == nil {
-		return nil, fmt.Errorf("gomatrixserverlib: cannot serialise uninitialised Event")
+		return nil, fmt.Errorf("gocoddyserverlib: cannot serialise uninitialised Event")
 	}
 	return e.eventJSON, nil
 }
@@ -82,21 +82,21 @@ func (e *eventV2) Redact() {
 	}
 	verImpl, err := GetFrameVersion(e.frameVersion)
 	if err != nil {
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v", err))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v", err))
 	}
 	eventJSON, err := verImpl.RedactEventJSON(e.eventJSON)
 	if err != nil {
 		// This is unreachable for events created with EventBuilder.Build or NewEventFromUntrustedJSON
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v", err))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v", err))
 	}
 	if eventJSON, err = EnforcedCanonicalJSON(eventJSON, e.frameVersion); err != nil {
 		// This is unreachable for events created with EventBuilder.Build or NewEventFromUntrustedJSON
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v", err))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v", err))
 	}
 	var res eventV2
 	err = json.Unmarshal(eventJSON, &res)
 	if err != nil {
-		panic(fmt.Errorf("gomatrixserverlib: Redact failed %v", err))
+		panic(fmt.Errorf("gocoddyserverlib: Redact failed %v", err))
 	}
 	res.redacted = true
 	res.eventJSON = eventJSON
@@ -108,11 +108,11 @@ func (e *eventV2) Sign(signingName string, keyID KeyID, privateKey ed25519.Priva
 	eventJSON, err := signEvent(signingName, keyID, privateKey, e.eventJSON, e.frameVersion)
 	if err != nil {
 		// This is unreachable for events created with EventBuilder.Build or NewEventFromUntrustedJSON
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v (%q)", err, string(e.eventJSON)))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v (%q)", err, string(e.eventJSON)))
 	}
 	if eventJSON, err = EnforcedCanonicalJSON(eventJSON, e.frameVersion); err != nil {
 		// This is unreachable for events created with EventBuilder.Build or NewEventFromUntrustedJSON
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v (%q)", err, string(e.eventJSON)))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v (%q)", err, string(e.eventJSON)))
 	}
 	res := &e
 	(*res).eventJSON = eventJSON
@@ -121,7 +121,7 @@ func (e *eventV2) Sign(signingName string, keyID KeyID, privateKey ed25519.Priva
 
 func newEventFromUntrustedJSONV2(eventJSON []byte, frameVersion IFrameVersion) (PDU, error) {
 	if r := gjson.GetBytes(eventJSON, "_*"); r.Exists() {
-		return nil, fmt.Errorf("gomatrixserverlib NewEventFromUntrustedJSON: found top-level '_' key, is this a headered event: %v", string(eventJSON))
+		return nil, fmt.Errorf("gocoddyserverlib NewEventFromUntrustedJSON: found top-level '_' key, is this a headered event: %v", string(eventJSON))
 	}
 	if err := frameVersion.CheckCanonicalJSON(eventJSON); err != nil {
 		return nil, BadJSONError{err}
@@ -130,7 +130,7 @@ func newEventFromUntrustedJSONV2(eventJSON []byte, frameVersion IFrameVersion) (
 	res := &eventV2{}
 	var err error
 	// Synapse removes these keys from events in case a server accidentally added them.
-	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/crypto/event_signing.py#L57-L62
+	// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/crypto/event_signing.py#L57-L62
 	for _, key := range []string{"outlier", "destinations", "age_ts", "unsigned", "event_id"} {
 		if eventJSON, err = sjson.DeleteBytes(eventJSON, key); err != nil {
 			return nil, err
@@ -192,18 +192,18 @@ var lenientByteLimitFrameVersions = map[FrameVersion]struct{}{
 	FrameVersionV9:        {},
 	FrameVersionV10:       {},
 	FrameVersionPseudoIDs: {},
-	"org.matrix.msc3787": {},
-	"org.matrix.msc3667": {},
+	"org.coddy.msc3787": {},
+	"org.coddy.msc3667": {},
 }
 
 func CheckFields(input PDU) error { // nolint: gocyclo
 	if input.AuthEventIDs() == nil || input.PrevEventIDs() == nil {
-		return errors.New("gomatrixserverlib: auth events and prev events must not be nil")
+		return errors.New("gocoddyserverlib: auth events and prev events must not be nil")
 	}
 	if l := len(input.JSON()); l > maxEventLength {
 		return EventValidationError{
 			Code:    EventValidationTooLarge,
-			Message: fmt.Sprintf("gomatrixserverlib: event is too long, length %d bytes > maximum %d bytes", l, maxEventLength),
+			Message: fmt.Sprintf("gocoddyserverlib: event is too long, length %d bytes > maximum %d bytes", l, maxEventLength),
 		}
 	}
 
@@ -211,7 +211,7 @@ func CheckFields(input PDU) error { // nolint: gocyclo
 	if l := utf8.RuneCountInString(input.Type()); l > maxIDLength {
 		return EventValidationError{
 			Code:    EventValidationTooLarge,
-			Message: fmt.Sprintf("gomatrixserverlib: event type is too long, length %d bytes > maximum %d bytes", l, maxIDLength),
+			Message: fmt.Sprintf("gocoddyserverlib: event type is too long, length %d bytes > maximum %d bytes", l, maxIDLength),
 		}
 	}
 
@@ -219,7 +219,7 @@ func CheckFields(input PDU) error { // nolint: gocyclo
 		if l := utf8.RuneCountInString(*input.StateKey()); l > maxIDLength {
 			return EventValidationError{
 				Code:    EventValidationTooLarge,
-				Message: fmt.Sprintf("gomatrixserverlib: state key is too long, length %d bytes > maximum %d bytes", l, maxIDLength),
+				Message: fmt.Sprintf("gocoddyserverlib: state key is too long, length %d bytes > maximum %d bytes", l, maxIDLength),
 			}
 		}
 	}
@@ -230,7 +230,7 @@ func CheckFields(input PDU) error { // nolint: gocyclo
 	if l := len(input.Type()); l > maxIDLength {
 		return EventValidationError{
 			Code:        EventValidationTooLarge,
-			Message:     fmt.Sprintf("gomatrixserverlib: event type is too long, length %d bytes > maximum %d bytes", l, maxIDLength),
+			Message:     fmt.Sprintf("gocoddyserverlib: event type is too long, length %d bytes > maximum %d bytes", l, maxIDLength),
 			Persistable: persistable,
 		}
 	}
@@ -239,7 +239,7 @@ func CheckFields(input PDU) error { // nolint: gocyclo
 		if l := len(*input.StateKey()); l > maxIDLength {
 			return EventValidationError{
 				Code:        EventValidationTooLarge,
-				Message:     fmt.Sprintf("gomatrixserverlib: state key is too long, length %d bytes > maximum %d bytes", l, maxIDLength),
+				Message:     fmt.Sprintf("gocoddyserverlib: state key is too long, length %d bytes > maximum %d bytes", l, maxIDLength),
 				Persistable: persistable,
 			}
 		}

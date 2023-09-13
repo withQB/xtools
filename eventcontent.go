@@ -93,7 +93,7 @@ func (c *CreateContent) UserIDAllowed(id spec.UserID) error {
 }
 
 // domainFromID returns everything after the first ":" character to extract
-// the domain part of a matrix ID.
+// the domain part of a coddy ID.
 func domainFromID(id string) (string, error) {
 	// IDs have the format: SIGIL LOCALPART ":" DOMAIN
 	// Split on the first ":" character since the domain can contain ":"
@@ -108,7 +108,7 @@ func domainFromID(id string) (string, error) {
 }
 
 // MemberContent is the JSON content of a m.frame.member event needed for auth checks.
-// See https://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-member for descriptions of the fields.
+// See m-frame-member for descriptions of the fields.
 type MemberContent struct {
 	// We use the membership key in order to check if the user is in the frame.
 	Membership  string `json:"membership"`
@@ -157,13 +157,13 @@ func (m *MXIDMapping) Sign(serverName spec.ServerName, keyID KeyID, privateKey e
 	return nil
 }
 
-// MemberThirdPartyInvite is the "Invite" structure defined at http://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-member
+// MemberThirdPartyInvite is the "Invite" structure defined at m-frame-member
 type MemberThirdPartyInvite struct {
 	DisplayName string                       `json:"display_name"`
 	Signed      MemberThirdPartyInviteSigned `json:"signed"`
 }
 
-// MemberThirdPartyInviteSigned is the "signed" structure defined at http://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-member
+// MemberThirdPartyInviteSigned is the "signed" structure defined at m-frame-member
 type MemberThirdPartyInviteSigned struct {
 	MXID       string                       `json:"mxid"`
 	Signatures map[string]map[string]string `json:"signatures"`
@@ -203,7 +203,7 @@ func NewMemberContentFromEvent(event PDU) (c MemberContent, err error) {
 }
 
 // ThirdPartyInviteContent is the JSON content of a m.frame.third_party_invite event needed for auth checks.
-// See https://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-third-party-invite for descriptions of the fields.
+// See m-frame-third-party-invite for descriptions of the fields.
 type ThirdPartyInviteContent struct {
 	DisplayName    string `json:"display_name"`
 	KeyValidityURL string `json:"key_validity_url"`
@@ -213,7 +213,7 @@ type ThirdPartyInviteContent struct {
 	PublicKeys []PublicKey `json:"public_keys"`
 }
 
-// PublicKey is the "PublicKeys" structure defined at https://matrix.org/docs/spec/client_server/r0.5.0#m-frame-third-party-invite
+// PublicKey is the "PublicKeys" structure defined
 type PublicKey struct {
 	PublicKey      spec.Base64Bytes `json:"public_key"`
 	KeyValidityURL string           `json:"key_validity_url"`
@@ -238,7 +238,7 @@ func NewThirdPartyInviteContentFromAuthEvents(authEvents AuthEventProvider, toke
 }
 
 // HistoryVisibilityContent is the JSON content of a m.frame.history_visibility event.
-// See https://matrix.org/docs/spec/client_server/r0.6.0#frame-history-visibility for descriptions of the fields.
+// See frame-history-visibility for descriptions of the fields.
 type HistoryVisibilityContent struct {
 	HistoryVisibility HistoryVisibility `json:"history_visibility"`
 }
@@ -300,7 +300,7 @@ var hisVisIntToStringMapping = map[uint8]HistoryVisibility{
 }
 
 // JoinRuleContent is the JSON content of a m.frame.join_rules event needed for auth checks.
-// See  https://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-join-rules for descriptions of the fields.
+// See  m-frame-join-rules for descriptions of the fields.
 type JoinRuleContent struct {
 	// We use the join_rule key to check whether join m.frame.member events are allowed.
 	JoinRule string                     `json:"join_rule"`
@@ -338,7 +338,7 @@ func NewJoinRuleContentFromAuthEvents(authEvents AuthEventProvider) (c JoinRuleC
 // unmarshalling the content directly from JSON so defaults can be applied.
 // However, the JSON key names are still preserved so it's possible to marshal
 // the struct into JSON easily.
-// See https://matrix.org/docs/spec/client_server/r0.2.0.html#m-frame-power-levels for descriptions of the fields.
+// See m-frame-power-levels for descriptions of the fields.
 type PowerLevelContent struct {
 	Ban           int64            `json:"ban"`
 	Invite        int64            `json:"invite"`
@@ -366,7 +366,7 @@ func (c *PowerLevelContent) EventLevel(eventType string, isState bool) int64 {
 	if eventType == spec.MFrameThirdPartyInvite {
 		// Special case third_party_invite events to have the same level as
 		// m.frame.member invite events.
-		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L182
+		// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L182
 		return c.Invite
 	}
 	level, ok := c.Events[eventType]
@@ -385,7 +385,6 @@ func (c *PowerLevelContent) NotificationLevel(notification string) int64 {
 	if ok {
 		return level
 	}
-	// https://matrix.org/docs/spec/client_server/r0.6.1#m-frame-power-levels
 	// frame	integer	The level required to trigger an @frame notification. Defaults to 50 if unspecified.
 	return 50
 }
@@ -405,20 +404,18 @@ func NewPowerLevelContentFromAuthEvents(authEvents AuthEventProvider, creatorUse
 	// If there are no power levels then fall back to defaults.
 	c.Defaults()
 	// If there is no power level event then the creator gets level 100
-	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L569
 	// If we want users to be able to set PLs > 100 with power_level_content_override
 	// then we need to set the upper bound: maximum allowable JSON value is (2^53)-1.
 	c.Users = map[string]int64{creatorUserID: 9007199254740991}
 	// If there is no power level event then the state_default is level 50
-	// https://github.com/matrix-org/synapse/blob/v1.38.0/synapse/event_auth.py#L437
+	// https://github.com/coddy-org/synapse/blob/v1.38.0/synapse/event_auth.py#L437
 	// Previously it was 0, but this was changed in:
-	// https://github.com/matrix-org/synapse/commit/5c9afd6f80cf04367fe9b02c396af9f85e02a611
+	// https://github.com/coddy-org/synapse/commit/5c9afd6f80cf04367fe9b02c396af9f85e02a611
 	c.StateDefault = 50
 	return
 }
 
 // Defaults sets the power levels to their default values.
-// See https://spec.matrix.org/v1.1/client-server-api/#mframepower_levels for defaults.
 func (c *PowerLevelContent) Defaults() {
 	c.Invite = 50
 	c.Ban = 50

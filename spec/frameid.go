@@ -7,7 +7,7 @@ import (
 
 const frameSigil = '!'
 
-// A FrameID identifies a matrix frame as per the matrix specification
+// A FrameID identifies a coddy frame as per the coddy specification
 type FrameID struct {
 	raw      string
 	opaqueID string

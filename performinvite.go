@@ -261,7 +261,7 @@ func PerformInvite(ctx context.Context, input PerformInviteInput, fedClient Fede
 // truncateAuthAndPrevEvents limits the number of events we add into
 // an event as prev_events or auth_events.
 // NOTSPEC: The limits here feel a bit arbitrary but they are currently
-// here because of https://github.com/matrix-org/matrix-doc/issues/2307
+// here because of https://github.com/coddy-org/coddy-doc/issues/2307
 // and because Synapse will just drop events that don't comply.
 func truncateAuthAndPrevEvents(auth, prev []string) (
 	truncAuth, truncPrev []string,

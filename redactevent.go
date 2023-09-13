@@ -59,28 +59,28 @@ var (
 )
 
 // RedactEvent strips the user controlled fields from an event, but leaves the
-// fields necessary for authenticating the event. Implements https://spec.matrix.org/unstable/frames/v9/#redactions
+// fields necessary for authenticating the event.
 // which protects membership 'join_authorised_via_users_server' key
 func redactEventJSONV4(eventJSON []byte) ([]byte, error) {
 	return redactEventJSON(eventJSON, unredactableContentFieldsV4)
 }
 
 // RedactEvent strips the user controlled fields from an event, but leaves the
-// fields necessary for authenticating the event. Implements https://spec.matrix.org/unstable/frames/v8/#redactions
+// fields necessary for authenticating the event. 
 // which protects join rules 'allow' key
 func redactEventJSONV3(eventJSON []byte) ([]byte, error) {
 	return redactEventJSON(eventJSON, unredactableContentFieldsV3)
 }
 
 // RedactEvent strips the user controlled fields from an event, but leaves the
-// fields necessary for authenticating the event. Implements https://spec.matrix.org/unstable/frames/v6/#redactions
+// fields necessary for authenticating the event.
 // which has no special meaning for m.frame.aliases
 func redactEventJSONV2(eventJSON []byte) ([]byte, error) {
 	return redactEventJSON(eventJSON, unredactableContentFieldsV2)
 }
 
 // RedactEvent strips the user controlled fields from an event, but leaves the
-// fields necessary for authenticating the event. Implements https://spec.matrix.org/unstable/frames/v1/#redactions
+// fields necessary for authenticating the event.
 func redactEventJSONV1(eventJSON []byte) ([]byte, error) {
 	return redactEventJSON(eventJSON, unredactableContentFieldsV1)
 }

@@ -108,7 +108,7 @@ func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, frameVer 
 
 // VerifyAuthRulesAtState will check that the auth_events in the given event are valid at the state of the frame before that event.
 //
-// This implements Step 5 of https://matrix.org/docs/spec/server_server/latest#checks-performed-on-receipt-of-a-pdu
+// This implements Step 5 of checks-performed-on-receipt-of-a-pdu
 // "Passes authorization rules based on the state at the event, otherwise it is rejected."
 //
 // If `allowValidation` is true:
@@ -118,7 +118,7 @@ func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, frameVer 
 func VerifyAuthRulesAtState(ctx context.Context, sp StateProvider, eventToVerify PDU, allowValidation bool, userIDForSender spec.UserIDForSender) error {
 	stateIDs, err := sp.StateIDsBeforeEvent(ctx, eventToVerify)
 	if err != nil {
-		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: cannot fetch state IDs before event %s: %w", eventToVerify.EventID(), err)
+		return fmt.Errorf("gocoddyserverlib.VerifyAuthRulesAtState: cannot fetch state IDs before event %s: %w", eventToVerify.EventID(), err)
 	}
 
 	if allowValidation {
@@ -141,20 +141,20 @@ func VerifyAuthRulesAtState(ctx context.Context, sp StateProvider, eventToVerify
 		}
 	}
 	if ctx.Err() != nil {
-		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: context cancelled: %w", ctx.Err())
+		return fmt.Errorf("gocoddyserverlib.VerifyAuthRulesAtState: context cancelled: %w", ctx.Err())
 	}
 
 	// slow path: fetch the events at this state and check auth
 	frameState, err := sp.StateBeforeEvent(ctx, eventToVerify.Version(), eventToVerify, stateIDs)
 	if err != nil {
-		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: cannot get state at event %s: %w", eventToVerify.EventID(), err)
+		return fmt.Errorf("gocoddyserverlib.VerifyAuthRulesAtState: cannot get state at event %s: %w", eventToVerify.EventID(), err)
 	}
 	if ctx.Err() != nil {
-		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: context cancelled: %w", ctx.Err())
+		return fmt.Errorf("gocoddyserverlib.VerifyAuthRulesAtState: context cancelled: %w", ctx.Err())
 	}
 	if err := checkAllowedByAuthEvents(eventToVerify, frameState, nil, userIDForSender); err != nil {
 		return fmt.Errorf(
-			"gomatrixserverlib.VerifyAuthRulesAtState: event %s is not allowed at state %s : %w",
+			"gocoddyserverlib.VerifyAuthRulesAtState: event %s is not allowed at state %s : %w",
 			eventToVerify.EventID(), eventToVerify.EventID(), err,
 		)
 	}
@@ -216,7 +216,7 @@ func checkAllowedByAuthEvents(
 	// as described by AuthEventIDs(). Check if they allow the event.
 	if err := Allowed(event, &authEvents, userIDForSender); err != nil {
 		return fmt.Errorf(
-			"gomatrixserverlib: event with ID %q is not allowed by its auth_events: %s",
+			"gocoddyserverlib: event with ID %q is not allowed by its auth_events: %s",
 			event.EventID(), err.Error(),
 		)
 	}
@@ -237,7 +237,7 @@ func CheckStateResponse(
 	var allEvents []PDU
 	for _, event := range authEvents {
 		if event.StateKey() == nil {
-			return nil, nil, fmt.Errorf("gomatrixserverlib: event %q does not have a state key", event.EventID())
+			return nil, nil, fmt.Errorf("gocoddyserverlib: event %q does not have a state key", event.EventID())
 		}
 		allEvents = append(allEvents, event)
 	}
@@ -245,12 +245,12 @@ func CheckStateResponse(
 	stateTuples := map[StateKeyTuple]bool{}
 	for _, event := range stateEvents {
 		if event.StateKey() == nil {
-			return nil, nil, fmt.Errorf("gomatrixserverlib: event %q does not have a state key", event.EventID())
+			return nil, nil, fmt.Errorf("gocoddyserverlib: event %q does not have a state key", event.EventID())
 		}
 		stateTuple := StateKeyTuple{EventType: event.Type(), StateKey: *event.StateKey()}
 		if stateTuples[stateTuple] {
 			return nil, nil, fmt.Errorf(
-				"gomatrixserverlib: duplicate state key tuple (%q, %q)",
+				"gocoddyserverlib: duplicate state key tuple (%q, %q)",
 				event.Type(), *event.StateKey(),
 			)
 		}
@@ -353,7 +353,7 @@ func CheckSendJoinResponse(
 	// Now check that the join event is valid against its auth events.
 	if err := checkAllowedByAuthEvents(joinEvent, eventsByID, missingAuth, userIDForSender); err != nil {
 		return nil, fmt.Errorf(
-			"gomatrixserverlib: event with ID %q is not allowed by its auth events: %w",
+			"gocoddyserverlib: event with ID %q is not allowed by its auth events: %w",
 			joinEvent.EventID(), err,
 		)
 	}
@@ -371,7 +371,7 @@ func CheckSendJoinResponse(
 	// Now check that the join event is valid against the supplied state.
 	if err := Allowed(joinEvent, &authEventProvider, userIDForSender); err != nil {
 		return nil, fmt.Errorf(
-			"gomatrixserverlib: event with ID %q is not allowed by the current frame state: %w",
+			"gocoddyserverlib: event with ID %q is not allowed by the current frame state: %w",
 			joinEvent.EventID(), err,
 		)
 	}

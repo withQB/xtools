@@ -379,7 +379,7 @@ func checkEventsContainCreateEvent(events []PDU) error {
 				return err
 			}
 			if verBody.Version == "" {
-				// https://matrix.org/docs/spec/client_server/r0.6.0#m-frame-create
+				// m-frame-create
 				// The version of the frame. Defaults to "1" if the key does not exist.
 				verBody.Version = "1"
 			}

@@ -142,29 +142,29 @@ func accumulateStateNeeded(result *StateNeeded, eventType string, sender spec.Se
 	switch eventType {
 	case spec.MFrameCreate:
 		// The create event doesn't require any state to authenticate.
-		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L123
+		// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L123
 	case spec.MFrameAliases:
 		// Alias events need:
 		//  * The create event.
-		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L128
+		//    https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L128
 		// Alias events need no further authentication.
-		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L160
+		// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L160
 		result.Create = true
 	case spec.MFrameMember:
 		// Member events need:
 		//  * The previous membership of the target.
-		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L355
+		//    https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L355
 		//  * The current membership state of the sender.
-		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L348
+		//    https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L348
 		//  * The join rules for the frame if the event is a join event.
-		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L361
+		//    https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L361
 		//  * The power levels for the frame.
-		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L370
+		//    https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L370
 		//  * And optionally may require a m.third_party_invite event
-		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L393
+		//    https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L393
 		//  * If using a restricted join rule, we should also include the membership event
 		//    of the user nominated in the `join_authorised_via_users_server` key
-		//    https://github.com/matrix-org/matrix-doc/blob/clokep/restricted-frames/proposals/3083-restricted-frames.md
+		//    https://github.com/coddy-org/coddy-doc/blob/clokep/restricted-frames/proposals/3083-restricted-frames.md
 		if content == nil {
 			err = errorf("missing memberContent for m.frame.member event")
 			return
@@ -192,9 +192,9 @@ func accumulateStateNeeded(result *StateNeeded, eventType string, sender spec.Se
 	default:
 		// All other events need:
 		//  * The membership of the sender.
-		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L177
+		//    https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L177
 		//  * The power levels for the frame.
-		//    https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L196
+		//    https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L196
 		result.Create = true
 		result.PowerLevels = true
 		result.Member = append(result.Member, string(sender))
@@ -458,7 +458,7 @@ func (a *allowerContext) aliasEventAllowed(event PDU) error {
 	// The alias events have different auth rules to ordinary events.
 	// In particular we allow any server to send a m.frame.aliases event without checking if the sender is in the frame.
 	// This allows server admins to update the m.frame.aliases event for their server when they change the aliases on their server.
-	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L143-L160
+	// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L143-L160
 	sender, err := a.userIDQuerier(a.frameID, event.SenderID())
 	if err != nil {
 		return err
@@ -478,7 +478,7 @@ func (a *allowerContext) aliasEventAllowed(event PDU) error {
 
 	// Check that event is a state event.
 	// Check that the state key matches the server sending this event.
-	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L158
+	// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L158
 	switch event.Version() {
 	case FrameVersionPseudoIDs:
 		if !event.StateKeyEquals(string(event.SenderID())) {
@@ -515,7 +515,7 @@ func (a *allowerContext) powerLevelsEventAllowed(event PDU) error {
 	}
 
 	// Check that the user levels are all valid user IDs
-	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L1063
+	// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L1063
 	for senderID := range newPowerLevels.Users {
 		sender, err := a.userIDQuerier(a.frameID, spec.SenderID(senderID))
 		if err != nil {
@@ -612,7 +612,7 @@ func checkEventLevels(senderLevel int64, oldPowerLevels, newPowerLevels PowerLev
 		// Users are allowed to change the level for an event if:
 		//   * the old level was less than or equal to their own
 		//   * the new level was less than or equal to their own
-		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L1134
+		// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L1134
 
 		// Check if the user is trying to set any of the levels to above their own.
 		if senderLevel < level.new {
@@ -673,8 +673,8 @@ func checkUserLevels(senderLevel int64, senderID spec.SenderID, oldPowerLevels, 
 		//   * the new level was less than or equal to their own
 		// They are allowed to change their own level if:
 		//   * the new level was less than or equal to their own
-		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L1126-L1127
-		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L1134
+		// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L1126-L1127
+		// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L1134
 
 		// Check if the user is trying to set any of the levels to above their own.
 		if senderLevel < level.new {
@@ -745,7 +745,6 @@ func checkNotificationLevels(senderLevel int64, oldPowerLevels, newPowerLevels P
 		// Users are allowed to change the notification level if:
 		//   * If the current value is less than or equal to the `sender`'s current power level
 		//   * If the new value is less than or equal to the `sender`'s current power level
-		// https://matrix.org/docs/spec/frames/v6#authorization-rules-for-events
 
 		// Check if the user is trying to set any of the levels to above their own.
 		if senderLevel < level.new {
@@ -1005,7 +1004,7 @@ func (m *membershipAllower) membershipAllowed(event PDU) error { // nolint: gocy
 	}
 
 	// Special case the first join event in the frame to allow the creator to join.
-	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L328
+	// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L328
 	if m.targetID == m.create.Creator &&
 		m.newMember.Membership == spec.Join &&
 		m.senderID == m.targetID &&
@@ -1024,7 +1023,7 @@ func (m *membershipAllower) membershipAllowed(event PDU) error { // nolint: gocy
 
 	if m.newMember.Membership == spec.Invite && m.newMember.ThirdPartyInvite != nil {
 		// Special case third party invites
-		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L393
+		// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L393
 		return m.membershipAllowedFromThirdPartyInvite()
 	}
 
@@ -1148,10 +1147,8 @@ func (m *membershipAllower) membershipAllowedSelf() error { // nolint: gocyclo
 		// A user that is not in the frame is allowed to knock if the join
 		// rules are "knock" and they are not already joined to, invited to
 		// or banned from the frame.
-		// Spec: https://spec.matrix.org/unstable/frames/v7/
 		// MSC3787 extends this: the behaviour above is also permitted if the
 		// join rules are "knock_restricted"
-		// Spec: https://github.com/matrix-org/matrix-spec-proposals/pull/3787
 		return m.frameVersionImpl.CheckKnockingAllowed(m)
 	case spec.Join:
 		if m.oldMember.Membership == spec.Leave && (m.joinRule.JoinRule == spec.Restricted || m.joinRule.JoinRule == spec.KnockRestricted) {
@@ -1257,7 +1254,7 @@ func (m *membershipAllower) membershipAllowedOther() error { // nolint: gocyclo
 	switch m.newMember.Membership {
 	case spec.Ban:
 		// A user may ban another user if their level is high enough
-		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L463
+		// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L463
 		if senderLevel >= m.powerLevels.Ban && senderLevel > targetLevel {
 			return nil
 		}
@@ -1270,7 +1267,7 @@ func (m *membershipAllower) membershipAllowedOther() error { // nolint: gocyclo
 		// A user may unban another user if their level is high enough.
 		// This is doesn't require the same power_level checks as banning.
 		// You can unban someone with higher power_level than you.
-		// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/api/auth.py#L451
+		// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L451
 		if m.oldMember.Membership == spec.Ban {
 			if senderLevel >= m.powerLevels.Ban {
 				return nil

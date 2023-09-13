@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// A ServerName is the name a matrix homeserver is identified by.
+// A ServerName is the name a coddy homeserver is identified by.
 // It is a DNS name or IP address optionally followed by a port.
 
 type ServerName string

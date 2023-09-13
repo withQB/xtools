@@ -45,7 +45,6 @@ func HandleMakeJoin(input HandleMakeJoinInput) (*HandleMakeJoinResponse, error) 
 	// Check that the frame that the remote side is trying to join is actually
 	// one of the frame versions that they listed in their supported ?ver= in
 	// the make_join URL.
-	// https://matrix.org/docs/spec/server_server/r0.1.3#get-matrix-federation-v1-make-join-frameid-userid
 	// If it isn't, stop trying to join the frame.
 	if !frameVersionSupported(input.FrameVersion, input.RemoteVersions) {
 		return nil, spec.IncompatibleFrameVersion(string(input.FrameVersion))

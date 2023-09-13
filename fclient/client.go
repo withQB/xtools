@@ -272,7 +272,7 @@ retryResolution:
 	// If we still have no results at this point, even after possibly
 	// hitting the network, then give up.
 	if len(resolutionResults) == 0 {
-		return nil, fmt.Errorf("no address found for matrix host %v", serverName)
+		return nil, fmt.Errorf("no address found for coddy host %v", serverName)
 	}
 
 	var resp *http.Response
@@ -308,15 +308,15 @@ func (fc *Client) SetUserAgent(ua string) {
 	fc.userAgent = ua
 }
 
-// LookupUserInfo gets information about a user from a given matrix homeserver
+// LookupUserInfo gets information about a user from a given coddy homeserver
 // using a bearer access token.
 func (fc *Client) LookupUserInfo(
-	ctx context.Context, matrixServer spec.ServerName, token string,
+	ctx context.Context, coddyServer spec.ServerName, token string,
 ) (u UserInfo, err error) {
 	url := url.URL{
-		Scheme:   "matrix",
-		Host:     string(matrixServer),
-		Path:     "/_matrix/federation/v1/openid/userinfo",
+		Scheme:   "coddy",
+		Host:     string(coddyServer),
+		Path:     "/_coddy/federation/v1/openid/userinfo",
 		RawQuery: url.Values{"access_token": []string{token}}.Encode(),
 	}
 
@@ -349,22 +349,22 @@ func (fc *Client) LookupUserInfo(
 	}
 
 	userParts := strings.SplitN(u.Sub, ":", 2)
-	if len(userParts) != 2 || userParts[1] != string(matrixServer) {
-		err = fmt.Errorf("userID doesn't match server name '%v' != '%v'", u.Sub, matrixServer)
+	if len(userParts) != 2 || userParts[1] != string(coddyServer) {
+		err = fmt.Errorf("userID doesn't match server name '%v' != '%v'", u.Sub, coddyServer)
 		return
 	}
 
 	return
 }
 
-// GetServerKeys asks a matrix server for its signing keys and TLS cert
+// GetServerKeys asks a coddy server for its signing keys and TLS cert
 func (fc *Client) GetServerKeys(
-	ctx context.Context, matrixServer spec.ServerName,
+	ctx context.Context, coddyServer spec.ServerName,
 ) (xtools.ServerKeys, error) {
 	url := url.URL{
-		Scheme: "matrix",
-		Host:   string(matrixServer),
-		Path:   "/_matrix/key/v2/server",
+		Scheme: "coddy",
+		Host:   string(coddyServer),
+		Path:   "/_coddy/key/v2/server",
 	}
 
 	var body xtools.ServerKeys
@@ -380,15 +380,14 @@ func (fc *Client) GetServerKeys(
 }
 
 // GetVersion gets the version information of a homeserver.
-// See https://matrix.org/docs/spec/server_server/r0.1.1.html#get-matrix-federation-v1-version
 func (fc *Client) GetVersion(
 	ctx context.Context, s spec.ServerName,
 ) (res Version, err error) {
 	// Construct a request for version information
 	url := url.URL{
-		Scheme: "matrix",
+		Scheme: "coddy",
 		Host:   string(s),
-		Path:   "/_matrix/federation/v1/version",
+		Path:   "/_coddy/federation/v1/version",
 	}
 	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
@@ -400,8 +399,8 @@ func (fc *Client) GetVersion(
 	return
 }
 
-// LookupServerKeys looks up the keys for a matrix server from a matrix server.
-// The first argument is the name of the matrix server to download the keys from.
+// LookupServerKeys looks up the keys for a coddy server from a coddy server.
+// The first argument is the name of the coddy server to download the keys from.
 // The second argument is a map from (server name, key ID) pairs to timestamps.
 // The (server name, key ID) pair identifies the key to download.
 // The timestamps tell the server when the keys need to be valid until.
@@ -410,13 +409,13 @@ func (fc *Client) GetVersion(
 // copy of the keys.
 // Returns the keys returned by the server, or an error if there was a problem talking to the server.
 func (fc *Client) LookupServerKeys(
-	ctx context.Context, matrixServer spec.ServerName,
+	ctx context.Context, coddyServer spec.ServerName,
 	keyRequests map[xtools.PublicKeyLookupRequest]spec.Timestamp,
 ) ([]xtools.ServerKeys, error) {
 	url := url.URL{
-		Scheme: "matrix",
-		Host:   string(matrixServer),
-		Path:   "/_matrix/key/v2/query",
+		Scheme: "coddy",
+		Host:   string(coddyServer),
+		Path:   "/_coddy/key/v2/query",
 	}
 
 	// The request format is:
@@ -476,11 +475,11 @@ func (fc *Client) LookupServerKeys(
 
 // CreateMediaDownloadRequest creates a request for media on a homeserver and returns the http.Response or an error
 func (fc *Client) CreateMediaDownloadRequest(
-	ctx context.Context, matrixServer spec.ServerName, mediaID string,
+	ctx context.Context, coddyServer spec.ServerName, mediaID string,
 ) (*http.Response, error) {
 	// Set allow_remote=false here so that we avoid loops:
 	// https://github.com/withqb/synapse/pull/1992
-	requestURL := "matrix://" + string(matrixServer) + "/_matrix/media/v3/download/" + string(matrixServer) + "/" + mediaID + "?allow_remote=false"
+	requestURL := "coddy://" + string(coddyServer) + "/_coddy/media/v3/download/" + string(coddyServer) + "/" + mediaID + "?allow_remote=false"
 	req, err := http.NewRequest("GET", requestURL, nil)
 	if err != nil {
 		return nil, err
@@ -492,8 +491,8 @@ func (fc *Client) CreateMediaDownloadRequest(
 // DoRequestAndParseResponse calls DoHTTPRequest and then decodes the response.
 //
 // If the HTTP response is not a 200, an attempt is made to parse the response
-// body into a gomatrix.RespError. In any case, a non-200 response will result
-// in a gomatrix.HTTPError.
+// body into a gocoddy.RespError. In any case, a non-200 response will result
+// in a gocoddy.HTTPError.
 func (fc *Client) DoRequestAndParseResponse(
 	ctx context.Context,
 	req *http.Request,
@@ -508,7 +507,7 @@ func (fc *Client) DoRequestAndParseResponse(
 	}
 
 	if response.StatusCode/100 != 2 { // not 2xx
-		// Adapted from https://github.com/withqb/gomatrix/blob/master/client.go
+		// Adapted from https://github.com/withqb/gocoddy/blob/master/client.go
 		var contents []byte
 		contents, err = io.ReadAll(response.Body)
 		if err != nil {

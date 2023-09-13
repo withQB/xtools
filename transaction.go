@@ -6,7 +6,7 @@ import (
 	"github.com/withqb/xtools/spec"
 )
 
-// A Transaction is used to push data from one matrix server to another matrix
+// A Transaction is used to push data from one coddy server to another coddy
 // server.
 type Transaction struct {
 	// The ID of the transaction.
@@ -32,8 +32,8 @@ type Transaction struct {
 	EDUs []EDU `json:"edus,omitempty"`
 }
 
-// A TransactionID identifies a transaction sent by a matrix server to another
-// matrix server. The ID must be unique amongst the transactions sent from the
+// A TransactionID identifies a transaction sent by a coddy server to another
+// coddy server. The ID must be unique amongst the transactions sent from the
 // origin server to the destination, but doesn't have to be globally unique.
 // The ID must be safe to insert into a URL path segment. The ID should have a
 // format matching '^[0-9A-Za-z\-_]*$'

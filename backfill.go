@@ -66,7 +66,7 @@ func RequestBackfill(ctx context.Context, origin spec.ServerName, b BackfillRequ
 			break
 		}
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("gomatrixserverlib: RequestBackfill context cancelled %w", ctx.Err())
+			return nil, fmt.Errorf("gocoddyserverlib: RequestBackfill context cancelled %w", ctx.Err())
 		}
 		// fetch some events, and try a different server if it fails
 		txn, err := b.Backfill(ctx, origin, s, frameID, limit, fromEventIDs)

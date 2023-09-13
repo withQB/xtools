@@ -57,7 +57,7 @@ const (
 	FrameVersionV8        FrameVersion = "8"
 	FrameVersionV9        FrameVersion = "9"
 	FrameVersionV10       FrameVersion = "10"
-	FrameVersionPseudoIDs FrameVersion = "org.matrix.msc4014"
+	FrameVersionPseudoIDs FrameVersion = "org.coddy.msc4014"
 )
 
 // Event format constants.
@@ -289,8 +289,8 @@ var frameVersionMeta = map[FrameVersion]IFrameVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	"org.matrix.msc3667": FrameVersionImpl{ // based on frame version 7
-		ver:                                    FrameVersion("org.matrix.msc3667"),
+	"org.coddy.msc3667": FrameVersionImpl{ // based on frame version 7
+		ver:                                    FrameVersion("org.coddy.msc3667"),
 		stable:                                 false,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -308,8 +308,8 @@ var frameVersionMeta = map[FrameVersion]IFrameVersion{
 		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
 		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
 	},
-	"org.matrix.msc3787": FrameVersionImpl{ // roughly, the union of v7 and v9
-		ver:                                    FrameVersion("org.matrix.msc3787"),
+	"org.coddy.msc3787": FrameVersionImpl{ // roughly, the union of v7 and v9
+		ver:                                    FrameVersion("org.coddy.msc3787"),
 		stable:                                 false,
 		stateResAlgorithm:                      StateResV2,
 		eventFormat:                            EventFormatV2,
@@ -329,7 +329,7 @@ var frameVersionMeta = map[FrameVersion]IFrameVersion{
 }
 
 // FrameVersions returns information about frame versions currently
-// implemented by this commit of gomatrixserverlib.
+// implemented by this commit of gocoddyserverlib.
 func FrameVersions() map[FrameVersion]IFrameVersion {
 	return frameVersionMeta
 }
@@ -387,7 +387,7 @@ func StableFrameVersions() map[FrameVersion]IFrameVersion {
 // that are this version. A version is marked as stable or unstable
 // in order to hint whether the version should be used to clients
 // calling the /capabilities endpoint.
-// https://matrix.org/docs/spec/client_server/r0.6.0#get-matrix-client-r0-capabilities
+// get-coddy-client-r0-capabilities
 type FrameVersionImpl struct {
 	ver                                    FrameVersion
 	stateResAlgorithm                      StateResAlgorithm
@@ -534,11 +534,11 @@ func NewEventFromHeaderedJSON(headeredEventJSON []byte, redacted bool) (PDU, err
 }
 
 // UnsupportedFrameVersionError occurs when a call has been made with a frame
-// version that is not supported by this version of gomatrixserverlib.
+// version that is not supported by this version of gocoddyserverlib.
 type UnsupportedFrameVersionError struct {
 	Version FrameVersion
 }
 
 func (e UnsupportedFrameVersionError) Error() string {
-	return fmt.Sprintf("gomatrixserverlib: unsupported frame version '%s'", e.Version)
+	return fmt.Sprintf("gocoddyserverlib: unsupported frame version '%s'", e.Version)
 }

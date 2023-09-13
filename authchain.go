@@ -48,7 +48,7 @@ func VerifyEventAuthChain(ctx context.Context, eventToVerify PDU, provideEvents 
 		if len(need) > 0 {
 			newEvents, err := provideEvents(eventToVerify.Version(), need)
 			if err != nil {
-				return fmt.Errorf("gomatrixserverlib: VerifyEventAuthChain failed to obtain auth events: %w", err)
+				return fmt.Errorf("gocoddyserverlib: VerifyEventAuthChain failed to obtain auth events: %w", err)
 			}
 			for i := range newEvents {
 				eventsByID[newEvents[i].EventID()] = newEvents[i] // add to lookup table
@@ -57,7 +57,7 @@ func VerifyEventAuthChain(ctx context.Context, eventToVerify PDU, provideEvents 
 		}
 		// verify the event
 		if err := checkAllowedByAuthEvents(curr, eventsByID, provideEvents, userIDForSender); err != nil {
-			return fmt.Errorf("gomatrixserverlib: VerifyEventAuthChain %v failed auth check: %w", curr.EventID(), err)
+			return fmt.Errorf("gocoddyserverlib: VerifyEventAuthChain %v failed auth check: %w", curr.EventID(), err)
 		}
 		// add to the verified list
 		verifiedEvents[curr.EventID()] = true

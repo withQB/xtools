@@ -26,7 +26,7 @@ type eventV1 struct {
 // MarshalJSON im plements json.Marshaller
 func (e eventV1) MarshalJSON() ([]byte, error) {
 	if e.eventJSON == nil {
-		return nil, fmt.Errorf("gomatrixserverlib: cannot serialise uninitialised Event")
+		return nil, fmt.Errorf("gocoddyserverlib: cannot serialise uninitialised Event")
 	}
 	return e.eventJSON, nil
 }
@@ -56,7 +56,7 @@ func (e *eventV1) Content() []byte {
 
 func (e *eventV1) JoinRule() (string, error) {
 	if !e.StateKeyEquals("") {
-		return "", fmt.Errorf("gomatrixserverlib: JoinRule() event is not a m.frame.join_rules event, bad state key")
+		return "", fmt.Errorf("gocoddyserverlib: JoinRule() event is not a m.frame.join_rules event, bad state key")
 	}
 	var content JoinRuleContent
 	if err := json.Unmarshal(e.eventFields.Content, &content); err != nil {
@@ -67,7 +67,7 @@ func (e *eventV1) JoinRule() (string, error) {
 
 func (e *eventV1) HistoryVisibility() (HistoryVisibility, error) {
 	if !e.StateKeyEquals("") {
-		return "", fmt.Errorf("gomatrixserverlib: HistoryVisibility() event is not a m.frame.history_visibility event, bad state key")
+		return "", fmt.Errorf("gocoddyserverlib: HistoryVisibility() event is not a m.frame.history_visibility event, bad state key")
 	}
 	var content HistoryVisibilityContent
 	if err := json.Unmarshal(e.eventFields.Content, &content); err != nil {
@@ -84,14 +84,14 @@ func (e *eventV1) Membership() (string, error) {
 		return "", err
 	}
 	if e.StateKey() == nil {
-		return "", fmt.Errorf("gomatrixserverlib: Membersip() event is not a m.frame.member event, missing state key")
+		return "", fmt.Errorf("gocoddyserverlib: Membersip() event is not a m.frame.member event, missing state key")
 	}
 	return content.Membership, nil
 }
 
 func (e *eventV1) PowerLevels() (*PowerLevelContent, error) {
 	if !e.StateKeyEquals("") {
-		return nil, fmt.Errorf("gomatrixserverlib: PowerLevels() event is not a m.frame.power_levels event, bad state key")
+		return nil, fmt.Errorf("gocoddyserverlib: PowerLevels() event is not a m.frame.power_levels event, bad state key")
 	}
 	c, err := NewPowerLevelContentFromEvent(e)
 	if err != nil {
@@ -142,21 +142,21 @@ func (e *eventV1) Redact() {
 	}
 	verImpl, err := GetFrameVersion(e.frameVersion)
 	if err != nil {
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v", err))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v", err))
 	}
 	eventJSON, err := verImpl.RedactEventJSON(e.eventJSON)
 	if err != nil {
 		// This is unreachable for events created with EventBuilder.Build or NewEventFromUntrustedJSON
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v", err))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v", err))
 	}
 	if eventJSON, err = EnforcedCanonicalJSON(eventJSON, e.frameVersion); err != nil {
 		// This is unreachable for events created with EventBuilder.Build or NewEventFromUntrustedJSON
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v", err))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v", err))
 	}
 	var res eventV1
 	err = json.Unmarshal(eventJSON, &res)
 	if err != nil {
-		panic(fmt.Errorf("gomatrixserverlib: populateFieldsFromJSON failed %v", err))
+		panic(fmt.Errorf("gocoddyserverlib: populateFieldsFromJSON failed %v", err))
 	}
 
 	res.redacted = true
@@ -223,11 +223,11 @@ func (e *eventV1) Sign(signingName string, keyID KeyID, privateKey ed25519.Priva
 	eventJSON, err := signEvent(signingName, keyID, privateKey, e.eventJSON, e.frameVersion)
 	if err != nil {
 		// This is unreachable for events created with EventBuilder.Build or NewEventFromUntrustedJSON
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v (%q)", err, string(e.eventJSON)))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v (%q)", err, string(e.eventJSON)))
 	}
 	if eventJSON, err = EnforcedCanonicalJSON(eventJSON, e.frameVersion); err != nil {
 		// This is unreachable for events created with EventBuilder.Build or NewEventFromUntrustedJSON
-		panic(fmt.Errorf("gomatrixserverlib: invalid event %v (%q)", err, string(e.eventJSON)))
+		panic(fmt.Errorf("gocoddyserverlib: invalid event %v (%q)", err, string(e.eventJSON)))
 	}
 	res := &e
 	(*res).eventJSON = eventJSON
@@ -258,7 +258,7 @@ func (e *eventV1) ToHeaderedJSON() ([]byte, error) {
 
 func newEventFromUntrustedJSONV1(eventJSON []byte, frameVersion IFrameVersion) (PDU, error) {
 	if r := gjson.GetBytes(eventJSON, "_*"); r.Exists() {
-		return nil, fmt.Errorf("gomatrixserverlib NewEventFromUntrustedJSON: found top-level '_' key, is this a headered event: %v", string(eventJSON))
+		return nil, fmt.Errorf("gocoddyserverlib NewEventFromUntrustedJSON: found top-level '_' key, is this a headered event: %v", string(eventJSON))
 	}
 	if err := frameVersion.CheckCanonicalJSON(eventJSON); err != nil {
 		return nil, BadJSONError{err}
@@ -268,7 +268,7 @@ func newEventFromUntrustedJSONV1(eventJSON []byte, frameVersion IFrameVersion) (
 	res.frameVersion = frameVersion.Version()
 
 	// Synapse removes these keys from events in case a server accidentally added them.
-	// https://github.com/matrix-org/synapse/blob/v0.18.5/synapse/crypto/event_signing.py#L57-L62
+	// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/crypto/event_signing.py#L57-L62
 	var err error
 	for _, key := range []string{"outlier", "destinations", "age_ts", "unsigned"} {
 		if eventJSON, err = sjson.DeleteBytes(eventJSON, key); err != nil {

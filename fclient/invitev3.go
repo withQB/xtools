@@ -23,7 +23,7 @@ func NewInviteV3Request(event xtools.ProtoEvent, version xtools.FrameVersion, st
 	return
 }
 
-// InviteV3Request is used in the body of a /_matrix/federation/v3/invite request.
+// InviteV3Request is used in the body of a /_coddy/federation/v3/invite request.
 type InviteV3Request struct {
 	fields struct {
 		inviteV2RequestHeaders

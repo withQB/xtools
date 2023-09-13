@@ -64,9 +64,8 @@ func NewEventJSONsFromEvents(he []PDU) EventJSONs {
 // the shortest possible encoding using integer values with sorted object keys.
 // At present this function performs:
 //   - shortest encoding, sorted lexicographically by UTF-8 codepoint:
-//     https://matrix.org/docs/spec/appendices#canonical-json
 //
-// Returns a gomatrixserverlib.BadJSONError if JSON validation fails.
+// Returns a gocoddyserverlib.BadJSONError if JSON validation fails.
 func CanonicalJSON(input []byte) ([]byte, error) {
 	if !gjson.Valid(string(input)) {
 		return nil, BadJSONError{errors.New("gjson validation failed")}
@@ -75,14 +74,12 @@ func CanonicalJSON(input []byte) ([]byte, error) {
 	return CanonicalJSONAssumeValid(input), nil
 }
 
-// Returns a gomatrixserverlib.BadJSONError if the canonical JSON fails enforced
+// Returns a gocoddyserverlib.BadJSONError if the canonical JSON fails enforced
 // checks or if JSON validation fails. At present this function performs:
 //   - integer bounds checking for frame version 6 and above:
-//     https://matrix.org/docs/spec/frames/v6#canonical-json
 //   - shortest encoding, sorted lexicographically by UTF-8 codepoint:
-//     https://matrix.org/docs/spec/appendices#canonical-json
 //
-// Returns a gomatrixserverlib.BadJSONError if JSON validation fails.
+// Returns a gocoddyserverlib.BadJSONError if JSON validation fails.
 func EnforcedCanonicalJSON(input []byte, frameVersion FrameVersion) ([]byte, error) {
 	frameVersionImpl, err := GetFrameVersion(frameVersion)
 	if err != nil {

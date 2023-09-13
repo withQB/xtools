@@ -11,7 +11,7 @@ const localDomainSeparator = ':'
 
 var validUsernameRegex = regexp.MustCompile(`^[0-9a-z_\-=./]+$`)
 
-// A UserID identifies a matrix user as per the matrix specification
+// A UserID identifies a coddy user as per the coddy specification
 type UserID struct {
 	raw    string
 	local  string
@@ -66,13 +66,11 @@ func parseAndValidateUserID(id string, allowHistoricalIDs bool) (*UserID, error)
 
 	if allowHistoricalIDs {
 		// NOTE: Allowed historical userIDs:
-		// https://spec.matrix.org/v1.4/appendices/#historical-user-ids
 		if !historicallyValidCharacters(localpart) {
 			return nil, fmt.Errorf("local part contains invalid characters from historical set")
 		}
 	} else {
 		// NOTE: Allowed in the latest spec:
-		// https://spec.matrix.org/v1.4/appendices/#user-identifiers
 		if !validUsernameRegex.MatchString(localpart) {
 			return nil, fmt.Errorf("local part contains invalid characters")
 		}

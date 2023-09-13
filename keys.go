@@ -8,7 +8,7 @@ import (
 	"github.com/withqb/xtools/spec"
 )
 
-// ServerKeys are the ed25519 signing keys published by a matrix server.
+// ServerKeys are the ed25519 signing keys published by a coddy server.
 // Contains SHA256 fingerprints of the TLS X509 certificates used by the server.
 type ServerKeys struct {
 	// Copy of the raw JSON for signature checking.
@@ -30,7 +30,7 @@ type OldVerifyKey struct {
 	ExpiredTS spec.Timestamp `json:"expired_ts"`
 }
 
-// ServerKeyFields are the parsed JSON contents of the ed25519 signing keys published by a matrix server.
+// ServerKeyFields are the parsed JSON contents of the ed25519 signing keys published by a coddy server.
 type ServerKeyFields struct {
 	// The name of the server
 	ServerName spec.ServerName `json:"server_name"`

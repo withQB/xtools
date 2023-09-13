@@ -111,7 +111,7 @@ func UnknownToken(msg string) CoddyError {
 }
 
 // WeakPassword is an error which is returned when the client tries to register
-// using a weak password. http://matrix.org/docs/spec/client_server/r0.2.0.html#password-based
+// using a weak password. password-based
 func WeakPassword(msg string) CoddyError {
 	return CoddyError{ErrorWeakPassword, msg}
 }

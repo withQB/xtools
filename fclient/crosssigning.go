@@ -22,7 +22,6 @@ type CrossSigningKeys struct {
 	UserSigningKey CrossSigningKey `json:"user_signing_key"`
 }
 
-// https://spec.matrix.org/unstable/client-server-api/#post_matrixclientr0keysdevice_signingupload
 type CrossSigningKey struct {
 	Signatures map[string]map[xtools.KeyID]spec.Base64Bytes `json:"signatures,omitempty"`
 	Keys       map[xtools.KeyID]spec.Base64Bytes            `json:"keys"`
