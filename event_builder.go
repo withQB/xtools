@@ -75,7 +75,7 @@ func (eb *EventBuilder) AddAuthEvents(provider AuthEventProvider) error {
 	return nil
 }
 
-// TODO: Remove?
+// TDO: Remove?
 func toEventReference(data any) []eventReference {
 	switch evs := data.(type) {
 	case nil:

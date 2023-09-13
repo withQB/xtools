@@ -370,7 +370,7 @@ func ResolveConflicts(
 		// Currently state res v1 doesn't handle unconflicted events
 		// for us, like state res v2 does, so we will need to add the
 		// unconflicted events into the state ourselves.
-		// TODO: Fix state res v1 so this is handled for the caller.
+		// TDO: Fix state res v1 so this is handled for the caller.
 		resolved = ResolveStateConflicts(conflicted, authEvents, userIDForSender)
 		resolved = append(resolved, notConflicted...)
 	case StateResV2:

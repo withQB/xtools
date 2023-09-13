@@ -1,6 +1,6 @@
 package spec
 
-// TODO: Remove. Since Go 1.8 this has been fixed.
+// TDO: Remove. Since Go 1.8 this has been fixed.
 // RawJSON is a reimplementation of json.RawMessage that supports being used as a value type
 //
 // For example:

@@ -112,7 +112,7 @@ func (l *EventsLoader) LoadAndVerify(ctx context.Context, rawEvents []json.RawMe
 		}
 	}
 
-	// TODO: performSoftFailCheck, needs forward extremity
+	// TDO: performSoftFailCheck, needs forward extremity
 	return results, nil
 }
 

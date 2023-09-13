@@ -348,7 +348,7 @@ func readHexDigits(input []byte) rune {
 
 // RawJSONFromResult extracts the raw JSON bytes pointed to by result.
 // input must be the json bytes that were used to generate result
-// TODO: Why do we do this?
+// TDO: Why do we do this?
 func RawJSONFromResult(result gjson.Result, _ []byte) []byte {
 	return []byte(result.Raw)
 }

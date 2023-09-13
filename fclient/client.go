@@ -276,7 +276,7 @@ retryResolution:
 	}
 
 	var resp *http.Response
-	// TODO: respect the priority and weight fields from the SRV record
+	// TDO: respect the priority and weight fields from the SRV record
 	for _, result := range resolutionResults {
 		u := makeHTTPSURL(r.URL, result.Destination)
 		r.URL = &u
@@ -522,7 +522,7 @@ func (fc *Client) DoRequestAndParseResponse(
 
 		// If we failed to decode as RespError, don't just drop the HTTP body, include it in the
 		// HTTP error instead (e.g proxy errors which return HTML).
-		msg := fmt.Sprintf("Failed to %s JSON (hostname %q path %q)", req.Method, req.Host, req.URL.Path)
+		msg := fmt.Sprintf("failed to %s JSON (hostname %q path %q)", req.Method, req.Host, req.URL.Path)
 		if wrap == nil {
 			msg += ": " + string(contents)
 		}

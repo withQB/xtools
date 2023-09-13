@@ -48,10 +48,10 @@ type PDU interface {
 	SetUnsignedField(path string, value interface{}) error
 	// Sign returns a copy of the event with an additional signature.
 	Sign(signingName string, keyID KeyID, privateKey ed25519.PrivateKey) PDU
-	Depth() int64                    // TODO: remove
-	JSON() []byte                    // TODO: remove
-	AuthEventIDs() []string          // TODO: remove
-	ToHeaderedJSON() ([]byte, error) // TODO: remove
+	Depth() int64                    // TDO: remove
+	JSON() []byte                    // TDO: remove
+	AuthEventIDs() []string          // TDO: remove
+	ToHeaderedJSON() ([]byte, error) // TDO: remove
 }
 
 // Convert a slice of concrete PDU implementations to a slice of PDUs. This is useful when

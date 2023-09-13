@@ -42,10 +42,10 @@ type BackfillRequester interface {
 // multiple servers. We don't drop events greater than the limit because we've already done all the work to
 // verify them, so it's up to the caller to decide what to do with them.
 //
-// TODO: We should be able to make some guarantees for the caller about the returned events position in the DAG,
+// TDO: We should be able to make some guarantees for the caller about the returned events position in the DAG,
 // but to verify it we need to know the prev_events of fromEventIDs.
 //
-// TODO: When does it make sense to return errors?
+// TDO: When does it make sense to return errors?
 func RequestBackfill(ctx context.Context, origin spec.ServerName, b BackfillRequester, keyRing JSONVerifier,
 	frameID string, ver FrameVersion, fromEventIDs []string, limit int, userIDForSender spec.UserIDForSender) ([]PDU, error) {
 
@@ -56,7 +56,7 @@ func RequestBackfill(ctx context.Context, origin spec.ServerName, b BackfillRequ
 	var result []PDU
 	loader := NewEventsLoader(ver, keyRing, b, b.ProvideEvents, false)
 	// pick a server to backfill from
-	// TODO: use other event IDs and make a set out of all the returned servers?
+	// TDO: use other event IDs and make a set out of all the returned servers?
 	servers := b.ServersAtEvent(ctx, frameID, fromEventIDs[0])
 	// loop each server asking it for `limit` events. Worst case, we ask every server for `limit`
 	// events before giving up. Best case, we just ask one.

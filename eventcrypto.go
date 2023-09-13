@@ -347,7 +347,7 @@ func signEvent(signingName string, keyID KeyID, privateKey ed25519.PrivateKey, e
 	}
 
 	// Sign the JSON, this adds a "signatures" key to the redacted event.
-	// TODO: Make an internal version of SignJSON that returns just the signatures so that we don't have to parse it out of the JSON.
+	// TDO: Make an internal version of SignJSON that returns just the signatures so that we don't have to parse it out of the JSON.
 	signedJSON, err := SignJSON(signingName, keyID, privateKey, redactedJSON)
 	if err != nil {
 		return nil, err

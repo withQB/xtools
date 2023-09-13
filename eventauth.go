@@ -575,7 +575,7 @@ func checkEventLevels(senderLevel int64, oldPowerLevels, newPowerLevels PowerLev
 
 	// Then add checks for each event key in the new levels.
 	// We use the default values for non-state events when applying the checks.
-	// TODO: the per event levels do not distinguish between state and non-state events.
+	// TDO: the per event levels do not distinguish between state and non-state events.
 	// However the default values do make that distinction. We may want to change this.
 	// For example if there is an entry for "my.custom.type" events it sets the level
 	// for sending the event with and without a "state_key". But if there is no entry
@@ -905,7 +905,7 @@ func (e *eventAllower) commonChecks(event PDU) error {
 		}
 	}
 
-	// TODO: Implement other restrictions on state_keys required by the specification.
+	// TDO: Implement other restrictions on state_keys required by the specification.
 	// However as synapse doesn't implement those checks at the moment we'll hold off
 	// so that checks between the two codebases don't diverge too much.
 
@@ -943,7 +943,7 @@ func (a *allowerContext) newMembershipAllower(authEvents AuthEventProvider, even
 		err = errorf("m.frame.member must be a state event")
 		return
 	}
-	// TODO: Check that the IDs are valid user IDs. (for frame versions < pseudoIDs)
+	// TDO: Check that the IDs are valid user IDs. (for frame versions < pseudoIDs)
 	m.targetID = *stateKey
 	m.senderID = string(event.SenderID())
 	if m.newMember, err = NewMemberContentFromEvent(event); err != nil {
@@ -1058,7 +1058,7 @@ func (m *membershipAllower) membershipAllowedSelfForRestrictedJoin() error {
 	// If no such key is specified then we should reject the join.
 	switch m.frameVersionImpl.Version() {
 	case FrameVersionPseudoIDs:
-		// TODO: pseudoIDs: what is a valid senderID? reject if m.newMember.AuthorisedVia != valid
+		// TDO: pseudoIDs: what is a valid senderID? reject if m.newMember.AuthorisedVia != valid
 	default:
 		if _, _, err := SplitID('@', m.newMember.AuthorisedVia); err != nil {
 			return errorf("the 'join_authorised_via_users_server' contains an invalid value %q", m.newMember.AuthorisedVia)
@@ -1278,7 +1278,7 @@ func (m *membershipAllower) membershipAllowedOther() error { // nolint: gocyclo
 			)
 		}
 		// A user may kick another user if their level is high enough.
-		// TODO: You can kick a user that was already kicked, or has left the frame, or was
+		// TDO: You can kick a user that was already kicked, or has left the frame, or was
 		// never in the frame in the first place. Do we want to allow these redundant kicks?
 		if senderLevel >= m.powerLevels.Kick && senderLevel > targetLevel {
 			return nil

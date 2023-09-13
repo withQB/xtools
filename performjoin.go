@@ -78,7 +78,7 @@ func PerformJoin(
 		input.UserID.String(),
 	)
 	if err != nil {
-		// TODO: Check if the user was not allowed to join the frame.
+		// TDO: Check if the user was not allowed to join the frame.
 		return nil, &FederationError{
 			ServerName: input.ServerName,
 			Transient:  true,
@@ -97,7 +97,6 @@ func PerformJoin(
 	// Work out if we support the frame version that has been supplied in
 	// the make_join response.
 	// "If not provided, the frame version is assumed to be either "1" or "2"."
-	// https://matrix.org/docs/spec/server_server/unstable#get-matrix-federation-v1-make-join-frameid-userid
 	frameVersion := respMakeJoin.GetFrameVersion()
 	if frameVersion == "" {
 		frameVersion = setDefaultFrameVersionFromJoinEvent(joinEvent)
@@ -238,7 +237,7 @@ func PerformJoin(
 	}
 
 	// get the membership events of all users, so we can store the mxid_mappings
-	// TODO: better way?
+	// TDO: better way?
 	if frameVersion == FrameVersionPseudoIDs {
 		stateEvents := respSendJoin.GetStateEvents().UntrustedEvents(frameVersion)
 		events := append(authEvents, stateEvents...)
@@ -257,7 +256,7 @@ func PerformJoin(
 	// for as long as possible for the work to complete by using a background
 	// context instead of the provided ctx. If the client does give up waiting,
 	// we'll still continue to process the join anyway so that we don't waste the effort.
-	// TODO: Can we expand Check here to return a list of missing auth
+	// TDO: Can we expand Check here to return a list of missing auth
 	// events rather than failing one at a time?
 	respState, err = CheckSendJoinResponse(
 		context.Background(),
@@ -283,7 +282,7 @@ func PerformJoin(
 		event, err = event.SetUnsigned(input.Unsigned)
 		if err != nil {
 			// non-fatal, log and continue
-			logrus.WithError(err).Errorf("Failed to set unsigned content")
+			logrus.WithError(err).Errorf("failed to set unsigned content")
 		}
 	}
 

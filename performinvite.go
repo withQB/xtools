@@ -216,7 +216,7 @@ func PerformInvite(ctx context.Context, input PerformInviteInput, fedClient Fede
 				return nil, spec.InternalServerError{}
 			}
 
-			// TODO: This should happen before the federation call ideally,
+			// TDO: This should happen before the federation call ideally,
 			// but we don't have a full PDU yet in this case by that point.
 			err = checkEventAllowed(inviteEvent)
 			if err != nil {

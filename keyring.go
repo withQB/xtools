@@ -262,7 +262,7 @@ func (k KeyRing) VerifyJSONs(ctx context.Context, requests []VerifyJSONRequest) 
 
 		fetcherLogger := logger.WithField("fetcher", fetcher.FetcherName())
 
-		// TODO: Coalesce in-flight requests for the same keys.
+		// TDO: Coalesce in-flight requests for the same keys.
 		// Otherwise we risk spamming the servers we query the keys from.
 
 		fetcherLogger.WithField("num_key_requests", len(keyRequests)).
@@ -270,12 +270,12 @@ func (k KeyRing) VerifyJSONs(ctx context.Context, requests []VerifyJSONRequest) 
 
 		fetched, err := fetcher.FetchKeys(ctx, keyRequests)
 		if err != nil {
-			fetcherLogger.WithError(err).Warn("Failed to request keys from fetcher")
+			fetcherLogger.WithError(err).Warn("failed to request keys from fetcher")
 			continue
 		}
 
 		if len(fetched) == 0 {
-			fetcherLogger.Warn("Failed to retrieve any keys")
+			fetcherLogger.Warn("failed to retrieve any keys")
 			continue
 		}
 
@@ -546,8 +546,8 @@ func (d *DirectKeyFetcher) FetchKeys(
 			if err != nil {
 				serverResults, err = d.fetchNotaryKeysForServer(ctx, server)
 				if err != nil {
-					// TODO: Should we actually be erroring here? or should we just drop those keys from the result map?
-					fetcherLogger.WithError(err).Error("Failed to fetch key for server")
+					// TDO: Should we actually be erroring here? or should we just drop those keys from the result map?
+					fetcherLogger.WithError(err).Error("failed to fetch key for server")
 					continue
 				}
 			}

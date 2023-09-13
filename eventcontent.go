@@ -549,7 +549,7 @@ func (v *levelJSONValue) assignIfExists(to *int64) {
 
 // Check if the user ID is a valid user ID.
 func isValidUserID(userID string) bool {
-	// TODO: Do we want to add anymore checks beyond checking the sigil and that it has a domain part?
+	// TDO: Do we want to add anymore checks beyond checking the sigil and that it has a domain part?
 	return userID[0] == '@' && strings.IndexByte(userID, ':') != -1
 }
 
