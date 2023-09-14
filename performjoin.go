@@ -120,34 +120,6 @@ func PerformJoin(
 	keyID := input.KeyID
 	origOrigin := origin
 	switch respMakeJoin.GetFrameVersion() {
-	case FrameVersionPseudoIDs:
-		// we successfully did a make_join, create a senderID for this user now
-		senderID, signingKey, err = input.GetOrCreateSenderID(ctx, *input.UserID, *input.FrameID, string(respMakeJoin.GetFrameVersion()))
-		if err != nil {
-			return nil, &FederationError{
-				ServerName: input.ServerName,
-				Transient:  false,
-				Reachable:  true,
-				Err:        fmt.Errorf("cannot create user frame key"),
-			}
-		}
-		keyID = "ed25519:1"
-		origin = spec.ServerName(senderID)
-
-		mapping := MXIDMapping{
-			UserFrameKey: senderID,
-			UserID:      input.UserID.String(),
-		}
-		if err = mapping.Sign(origOrigin, input.KeyID, input.PrivateKey); err != nil {
-			return nil, &FederationError{
-				ServerName: input.ServerName,
-				Transient:  false,
-				Reachable:  true,
-				Err:        fmt.Errorf("cannot sign mxid_mapping: %w", err),
-			}
-		}
-
-		input.Content["mxid_mapping"] = mapping
 	default:
 		senderID = spec.SenderID(input.UserID.String())
 	}
@@ -216,7 +188,7 @@ func PerformJoin(
 	// contain signatures that we don't know about.
 	if len(respSendJoin.GetJoinEvent()) > 0 {
 		var remoteEvent PDU
-		remoteEvent, err = verImpl.NewEventFromUntrustedJSON(respSendJoin.GetJoinEvent())
+		remoteEvent, err = verImpl.EventFromUntrustedJSON(respSendJoin.GetJoinEvent())
 		if err == nil && isWellFormedJoinMemberEvent(
 			remoteEvent, input.FrameID, senderID,
 		) {
@@ -233,22 +205,6 @@ func PerformJoin(
 			Transient:  false,
 			Reachable:  true,
 			Err:        fmt.Errorf("sanityCheckAuthChain: %w", err),
-		}
-	}
-
-	// get the membership events of all users, so we can store the mxid_mappings
-	// TDO: better way?
-	if frameVersion == FrameVersionPseudoIDs {
-		stateEvents := respSendJoin.GetStateEvents().UntrustedEvents(frameVersion)
-		events := append(authEvents, stateEvents...)
-		err = storeMXIDMappings(ctx, events, *input.FrameID, input.KeyRing, input.StoreSenderIDFromPublicID)
-		if err != nil {
-			return nil, &FederationError{
-				ServerName: input.ServerName,
-				Transient:  false,
-				Reachable:  true,
-				Err:        fmt.Errorf("unable to store mxid_mapping: %w", err),
-			}
 		}
 	}
 
@@ -292,59 +248,16 @@ func PerformJoin(
 	}, nil
 }
 
-func storeMXIDMappings(
-	ctx context.Context,
-	events []PDU,
-	frameID spec.FrameID,
-	keyRing JSONVerifier,
-	storeSenderID spec.StoreSenderIDFromPublicID,
-) error {
-	for _, ev := range events {
-		if ev.Type() != spec.MFrameMember {
-			continue
-		}
-		mapping := MemberContent{}
-		if err := json.Unmarshal(ev.Content(), &mapping); err != nil {
-			return err
-		}
-		if mapping.MXIDMapping == nil {
-			continue
-		}
-		// we already validated it is a valid frameversion, so this should be safe to use.
-		verImpl := MustGetFrameVersion(ev.Version())
-		if err := validateMXIDMappingSignature(ctx, ev, keyRing, verImpl); err != nil {
-			logrus.WithError(err).Error("invalid signature for mxid_mapping")
-			continue
-		}
-		if err := storeSenderID(ctx, ev.SenderID(), mapping.MXIDMapping.UserID, frameID); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func setDefaultFrameVersionFromJoinEvent(
 	joinEvent ProtoEvent,
 ) FrameVersion {
 	// if auth events are not event references we know it must be v3+
 	// we have to do these shenanigans to satisfy sytest, specifically for:
 	// "Outbound federation rejects m.frame.create events with an unknown frame version"
-	hasEventRefs := true
-	authEvents, ok := joinEvent.AuthEvents.([]interface{})
-	if ok {
-		if len(authEvents) > 0 {
-			_, ok = authEvents[0].(string)
-			if ok {
-				// event refs are objects, not strings, so we know we must be dealing with a v3+ frame.
-				hasEventRefs = false
-			}
-		}
-	}
 
-	if hasEventRefs {
-		return FrameVersionV1
-	}
-	return FrameVersionV4
+
+
+	return FrameVersionV10
 }
 
 // isWellFormedJoinMemberEvent returns true if the event looks like a legitimate

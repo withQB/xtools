@@ -30,9 +30,7 @@ type FederationClient interface {
 	SendJoin(ctx context.Context, origin, s spec.ServerName, event xtools.PDU) (res RespSendJoin, err error)
 	MakeLeave(ctx context.Context, origin, s spec.ServerName, frameID, userID string) (res RespMakeLeave, err error)
 	SendLeave(ctx context.Context, origin, s spec.ServerName, event xtools.PDU) (err error)
-	SendInviteV2(ctx context.Context, origin, s spec.ServerName, request InviteV2Request) (res RespInviteV2, err error)
-	SendInviteV3(ctx context.Context, origin, s spec.ServerName, request InviteV3Request, userID spec.UserID) (res RespInviteV2, err error)
-
+	
 	GetEvent(ctx context.Context, origin, s spec.ServerName, eventID string) (res xtools.Transaction, err error)
 
 	GetEventAuth(ctx context.Context, origin, s spec.ServerName, frameVersion xtools.FrameVersion, frameID, eventID string) (res RespEventAuth, err error)
@@ -289,24 +287,6 @@ func (ac *federationClient) MakeKnock(
 	return
 }
 
-// SendKnock sends a join m.frame.member event obtained using MakeKnock via a
-// remote coddy server.
-// This is used to ask to join a frame the local server isn't a member of.
-func (ac *federationClient) SendKnock(
-	ctx context.Context, origin, s spec.ServerName, event xtools.PDU,
-) (res RespSendKnock, err error) {
-	path := federationPathPrefixV1 + "/send_knock/" +
-		url.PathEscape(event.FrameID()) + "/" +
-		url.PathEscape(event.EventID())
-
-	req := NewFederationRequest("PUT", origin, s, path)
-	if err = req.SetContent(event); err != nil {
-		return
-	}
-	err = ac.doRequest(ctx, req, &res)
-	return
-}
-
 // MakeLeave makes a leave m.frame.member event for a frame on a remote coddy server.
 // This is used to reject a remote invite and is similar to MakeJoin.
 // If this successfully returns an acceptable event we will sign it, replace
@@ -366,55 +346,6 @@ func (ac *federationClient) SendInvite(
 		url.PathEscape(event.EventID())
 	req := NewFederationRequest("PUT", origin, s, path)
 	if err = req.SetContent(event); err != nil {
-		return
-	}
-	err = ac.doRequest(ctx, req, &res)
-	return
-}
-
-// SendInviteV2 sends an invite m.frame.member event to an invited server to be
-// signed by it. This is used to invite a user that is not on the local server.
-func (ac *federationClient) SendInviteV2(
-	ctx context.Context, origin, s spec.ServerName, request InviteV2Request,
-) (res RespInviteV2, err error) {
-	event := request.Event()
-	path := federationPathPrefixV2 + "/invite/" +
-		url.PathEscape(event.FrameID()) + "/" +
-		url.PathEscape(event.EventID())
-	req := NewFederationRequest("PUT", origin, s, path)
-	if err = req.SetContent(request); err != nil {
-		return
-	}
-	err = ac.doRequest(ctx, req, &res)
-
-	gerr, ok := err.(xcore.HTTPError)
-	if ok && gerr.Code == 404 {
-		// fallback to v1 which returns [200, body]
-		var resp RespInvite
-		resp, err = ac.SendInvite(ctx, origin, s, request.Event())
-		if err != nil {
-			return
-		}
-		// assume v1 as per spec: put-coddy-federation-v1-invite-frameid-eventid
-		// Servers which receive a v1 invite request must assume that the frame version is either "1" or "2".
-		res = RespInviteV2{ // nolint:gosimple
-			Event: resp.Event,
-		}
-	}
-	return
-}
-
-// SendInviteV3 sends an invite m.frame.member event to an invited server to be
-// signed by it. This is used to invite a user that is not on the local server.
-// V3 sends a partial event to allow the invitee to populate the mxid_mapping.
-func (ac *federationClient) SendInviteV3(
-	ctx context.Context, origin, s spec.ServerName, request InviteV3Request, userID spec.UserID,
-) (res RespInviteV2, err error) {
-	path := federationPathPrefixV3 + "/invite/" +
-		url.PathEscape(request.Event().FrameID) + "/" +
-		url.PathEscape(userID.String())
-	req := NewFederationRequest("PUT", origin, s, path)
-	if err = req.SetContent(request); err != nil {
 		return
 	}
 	err = ac.doRequest(ctx, req, &res)

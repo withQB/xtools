@@ -21,7 +21,7 @@ func (e EventJSONs) TrustedEvents(frameVersion FrameVersion, redacted bool) []PD
 	}
 	events := make([]PDU, 0, len(e))
 	for _, js := range e {
-		event, err := verImpl.NewEventFromTrustedJSON(js, redacted)
+		event, err := verImpl.EventFromTrustedJSON(js, redacted)
 		if err != nil {
 			continue
 		}
@@ -37,7 +37,7 @@ func (e EventJSONs) UntrustedEvents(frameVersion FrameVersion) []PDU {
 	}
 	events := make([]PDU, 0, len(e))
 	for _, js := range e {
-		event, err := verImpl.NewEventFromUntrustedJSON(js)
+		event, err := verImpl.EventFromUntrustedJSON(js)
 		switch e := err.(type) {
 		case EventValidationError:
 			if !e.Persistable {
@@ -93,8 +93,6 @@ func EnforcedCanonicalJSON(input []byte, frameVersion FrameVersion) ([]byte, err
 }
 
 var ErrCanonicalJSON = errors.New("value is outside of safe range")
-
-func noVerifyCanonicalJSON(input []byte) error { return nil }
 
 func verifyEnforcedCanonicalJSON(input []byte) error {
 	valid := true

@@ -36,8 +36,7 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 
 	// The sender should have signed the event in all cases.
 	switch e.Version() {
-	case FrameVersionPseudoIDs:
-		needed[spec.ServerName(e.SenderID())] = struct{}{}
+
 	default:
 		validFrameID, err := spec.NewFrameID(e.FrameID())
 		if err != nil {
@@ -72,19 +71,9 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 			return fmt.Errorf("failed to get membership of membership event: %w", err)
 		}
 
-		// Validate the MXIDMapping is signed correctly
-		if verImpl.Version() == FrameVersionPseudoIDs && membership == spec.Join {
-			err = validateMXIDMappingSignature(ctx, e, verifier, verImpl)
-			if err != nil {
-				return err
-			}
-		}
-
 		// For invites, the invited server should have signed the event.
 		if membership == spec.Invite {
 			switch e.Version() {
-			case FrameVersionPseudoIDs:
-				needed[spec.ServerName(*e.StateKey())] = struct{}{}
 			default:
 				_, serverName, err = SplitID('@', *e.StateKey())
 				if err != nil {
@@ -123,12 +112,6 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 		toVerify = append(toVerify, v)
 	}
 
-	if verImpl.Version() == FrameVersionPseudoIDs {
-		// we already verified the mxid_mapping at this stage, so replace the KeyRing verifier
-		// with the self verifier to validate pseudoID events
-		verifier = JSONVerifierSelf{}
-	}
-
 	results, err := verifier.VerifyJSONs(ctx, toVerify)
 	if err != nil {
 		return fmt.Errorf("failed to verify JSONs: %w", err)
@@ -143,50 +126,6 @@ func VerifyEventSignatures(ctx context.Context, e PDU, verifier JSONVerifier, us
 	return nil
 }
 
-// validateMXIDMappingSignature validates that the MXIDMapping is correctly signed
-func validateMXIDMappingSignature(ctx context.Context, e PDU, verifier JSONVerifier, verImpl IFrameVersion) error {
-	var content MemberContent
-	err := json.Unmarshal(e.Content(), &content)
-	if err != nil {
-		return err
-	}
-
-	// if there is no mapping, we can't check the signature
-	if content.MXIDMapping == nil {
-		return fmt.Errorf("missing mxid_mapping, unable to validate event")
-	}
-
-	var toVerify []VerifyJSONRequest
-
-	mapping, err := json.Marshal(content.MXIDMapping)
-	if err != nil {
-		return err
-	}
-	for s := range content.MXIDMapping.Signatures {
-		v := VerifyJSONRequest{
-			Message:              mapping,
-			AtTS:                 e.OriginServerTS(),
-			ServerName:           s,
-			ValidityCheckingFunc: verImpl.SignatureValidityCheck,
-		}
-		toVerify = append(toVerify, v)
-	}
-
-	// check that the mapping is correctly signed by the server
-	results, err := verifier.VerifyJSONs(ctx, toVerify)
-	if err != nil {
-		return fmt.Errorf("failed to verify MXIDMapping: %w", err)
-	}
-
-	for _, result := range results {
-		if result.Error != nil {
-			return fmt.Errorf("failed to verify MXIDMapping: %w", result.Error)
-		}
-	}
-
-	return err
-}
-
 func extractAuthorisedViaServerName(content []byte) (spec.ServerName, error) {
 	if v := gjson.GetBytes(content, "join_authorised_via_users_server"); v.Exists() {
 		_, serverName, err := SplitID('@', v.String())
@@ -197,8 +136,6 @@ func extractAuthorisedViaServerName(content []byte) (spec.ServerName, error) {
 	}
 	return "", nil
 }
-
-func emptyAuthorisedViaServerName([]byte) (spec.ServerName, error) { return "", nil }
 
 // addContentHashesToEvent sets the "hashes" key of the event with a SHA-256 hash of the unredacted event content.
 // This hash is used to detect whether the unredacted content of the event is valid.

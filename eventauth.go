@@ -349,19 +349,19 @@ func (a *allowerContext) update(provider AuthEventProvider) {
 		a.createEvent, a.powerLevelsEvent, a.joinRuleEvent = nil, nil, nil
 	}
 	if e, _ := provider.Create(); a.createEvent == nil || a.createEvent != e {
-		if c, err := NewCreateContentFromAuthEvents(provider, a.userIDQuerier); err == nil {
+		if c, err := CreateContentFromAuthEvents(provider, a.userIDQuerier); err == nil {
 			a.createEvent = e
 			a.create = c
 		}
 	}
 	if e, _ := provider.PowerLevels(); a.powerLevelsEvent == nil || a.powerLevelsEvent != e {
-		if p, err := NewPowerLevelContentFromAuthEvents(provider, a.create.Creator); err == nil {
+		if p, err := PowerLevelContentFromAuthEvents(provider, a.create.Creator); err == nil {
 			a.powerLevelsEvent = e
 			a.powerLevels = p
 		}
 	}
 	if e, _ := provider.JoinRules(); a.joinRuleEvent == nil || a.joinRuleEvent != e {
-		if j, err := NewJoinRuleContentFromAuthEvents(provider); err == nil {
+		if j, err := JoinRuleContentFromAuthEvents(provider); err == nil {
 			a.joinRuleEvent, _ = provider.JoinRules()
 			a.joinRule = j
 		}
@@ -480,10 +480,6 @@ func (a *allowerContext) aliasEventAllowed(event PDU) error {
 	// Check that the state key matches the server sending this event.
 	// https://github.com/coddy-org/synapse/blob/v0.18.5/synapse/api/auth.py#L158
 	switch event.Version() {
-	case FrameVersionPseudoIDs:
-		if !event.StateKeyEquals(string(event.SenderID())) {
-			return errorf("alias state_key does not match sender domain, %q != %q", event.SenderID(), *event.StateKey())
-		}
 	default:
 		if !event.StateKeyEquals(string(sender.Domain())) {
 			return errorf("alias state_key does not match sender domain, %q != %q", sender.Domain(), *event.StateKey())
@@ -509,7 +505,7 @@ func (a *allowerContext) powerLevelsEventAllowed(event PDU) error {
 	}
 
 	// Parse the power levels.
-	newPowerLevels, err := NewPowerLevelContentFromEvent(event)
+	newPowerLevels, err := PowerLevelContentFromEvent(event)
 	if err != nil {
 		return err
 	}
@@ -548,10 +544,6 @@ func (a *allowerContext) powerLevelsEventAllowed(event PDU) error {
 	return checkUserLevels(senderLevel, event.SenderID(), oldPowerLevels, newPowerLevels)
 }
 
-// noCheckLevels doesn't perform any checks, used for frame versions <= 5
-func noCheckLevels(senderLevel int64, oldPowerLevels, newPowerLevels PowerLevelContent) error {
-	return nil
-}
 
 // checkEventLevels checks that the changes in event levels are allowed.
 func checkEventLevels(senderLevel int64, oldPowerLevels, newPowerLevels PowerLevelContent) error {
@@ -851,7 +843,7 @@ type eventAllower struct {
 // by a given user ID from the auth events.
 func (a *allowerContext) newEventAllower(senderID spec.SenderID) (e eventAllower, err error) {
 	e.allowerContext = a
-	if e.member, err = NewMemberContentFromAuthEvents(a.provider, senderID); err != nil {
+	if e.member, err = MemberContentFromAuthEvents(a.provider, senderID); err != nil {
 		return
 	}
 	return
@@ -946,19 +938,19 @@ func (a *allowerContext) newMembershipAllower(authEvents AuthEventProvider, even
 	// TDO: Check that the IDs are valid user IDs. (for frame versions < pseudoIDs)
 	m.targetID = *stateKey
 	m.senderID = string(event.SenderID())
-	if m.newMember, err = NewMemberContentFromEvent(event); err != nil {
+	if m.newMember, err = MemberContentFromEvent(event); err != nil {
 		return
 	}
-	if m.oldMember, err = NewMemberContentFromAuthEvents(authEvents, spec.SenderID(m.targetID)); err != nil {
+	if m.oldMember, err = MemberContentFromAuthEvents(authEvents, spec.SenderID(m.targetID)); err != nil {
 		return
 	}
-	if m.senderMember, err = NewMemberContentFromAuthEvents(authEvents, spec.SenderID(m.senderID)); err != nil {
+	if m.senderMember, err = MemberContentFromAuthEvents(authEvents, spec.SenderID(m.senderID)); err != nil {
 		return
 	}
 	// If this event comes from a third_party_invite, we need to check it against the original event.
 	if m.newMember.ThirdPartyInvite != nil {
 		token := m.newMember.ThirdPartyInvite.Signed.Token
-		if m.thirdPartyInvite, err = NewThirdPartyInviteContentFromAuthEvents(authEvents, token); err != nil {
+		if m.thirdPartyInvite, err = ThirdPartyInviteContentFromAuthEvents(authEvents, token); err != nil {
 			return
 		}
 	}
@@ -1057,8 +1049,6 @@ func (m *membershipAllower) membershipAllowedSelfForRestrictedJoin() error {
 	// in the frame that should have a suitable power level to issue invites.
 	// If no such key is specified then we should reject the join.
 	switch m.frameVersionImpl.Version() {
-	case FrameVersionPseudoIDs:
-		// TDO: pseudoIDs: what is a valid senderID? reject if m.newMember.AuthorisedVia != valid
 	default:
 		if _, _, err := SplitID('@', m.newMember.AuthorisedVia); err != nil {
 			return errorf("the 'join_authorised_via_users_server' contains an invalid value %q", m.newMember.AuthorisedVia)
@@ -1205,18 +1195,6 @@ func (m *membershipAllower) membershipAllowedSelf() error { // nolint: gocyclo
 
 func allowRestrictedJoins() error {
 	return nil
-}
-
-func disallowRestrictedJoins() error {
-	return errorf("restricted joins are not supported in this frame version")
-}
-
-func disallowKnocking(m *membershipAllower) error {
-	return m.membershipFailed(
-		"frame version %q does not support knocking on frames with join rule %q",
-		m.frameVersionImpl.Version(),
-		m.joinRule.JoinRule,
-	)
 }
 
 func checkKnocking(m *membershipAllower) error {

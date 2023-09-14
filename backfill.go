@@ -75,7 +75,7 @@ func RequestBackfill(ctx context.Context, origin spec.ServerName, b BackfillRequ
 			continue // try the next server
 		}
 		// topologically sort the events so implementations of 'get state at event' can do optimisations
-		loadResults, err := loader.LoadAndVerify(ctx, txn.PDUs, TopologicalOrderByPrevEvents, userIDForSender)
+		loadResults, err := loader.LoadAndVerify(ctx, txn.PDUs, userIDForSender)
 		if err != nil {
 			lastErr = err
 			continue // try the next server

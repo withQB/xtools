@@ -327,12 +327,6 @@ func (r RespSendJoin) MarshalJSON() ([]byte, error) {
 	return json.Marshal(partialJoinFields)
 }
 
-// A RespSendKnock is the content of a response to PUT /_coddy/federation/v2/send_knock/{frameID}/{eventID}
-type RespSendKnock struct {
-	// A list of stripped state events to help the initiator of the knock identify the frame.
-	KnockFrameState []xtools.InviteStrippedState `json:"knock_frame_state"`
-}
-
 // A RespMakeKnock is the content of a response to GET /_coddy/federation/v2/make_knock/{frameID}/{userID}
 type RespMakeKnock struct {
 	// An incomplete m.frame.member event for a user on the requesting server

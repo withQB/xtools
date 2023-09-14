@@ -20,9 +20,9 @@ type IFrameVersion interface {
 	EventIDFormat() EventIDFormat
 	RedactEventJSON(eventJSON []byte) ([]byte, error)
 	SignatureValidityCheck(atTS, validUntil spec.Timestamp) bool
-	NewEventFromTrustedJSON(eventJSON []byte, redacted bool) (result PDU, err error)
-	NewEventFromTrustedJSONWithEventID(eventID string, eventJSON []byte, redacted bool) (result PDU, err error)
-	NewEventFromUntrustedJSON(eventJSON []byte) (result PDU, err error)
+	EventFromTrustedJSON(eventJSON []byte, redacted bool) (result PDU, err error)
+	EventFromTrustedJSONWithEventID(eventID string, eventJSON []byte, redacted bool) (result PDU, err error)
+	EventFromUntrustedJSON(eventJSON []byte) (result PDU, err error)
 	NewEventBuilder() *EventBuilder
 	NewEventBuilderFromProtoEvent(pe *ProtoEvent) *EventBuilder
 	CheckRestrictedJoin(ctx context.Context, localServerName spec.ServerName, frameQuerier RestrictedFrameJoinQuerier, frameID spec.FrameID, senderID spec.SenderID) (string, error)
@@ -47,17 +47,8 @@ type EventIDFormat int
 // Frame version constants. These are strings because the version grammar
 // allows for future expansion.
 const (
-	FrameVersionV1        FrameVersion = "1"
-	FrameVersionV2        FrameVersion = "2"
-	FrameVersionV3        FrameVersion = "3"
-	FrameVersionV4        FrameVersion = "4"
-	FrameVersionV5        FrameVersion = "5"
-	FrameVersionV6        FrameVersion = "6"
-	FrameVersionV7        FrameVersion = "7"
-	FrameVersionV8        FrameVersion = "8"
-	FrameVersionV9        FrameVersion = "9"
+
 	FrameVersionV10       FrameVersion = "10"
-	FrameVersionPseudoIDs FrameVersion = "org.coddy.msc4014"
 )
 
 // Event format constants.
@@ -80,177 +71,6 @@ const (
 )
 
 var frameVersionMeta = map[FrameVersion]IFrameVersion{
-	FrameVersionV1: FrameVersionImpl{
-		ver:                                    FrameVersionV1,
-		stable:                                 true,
-		stateResAlgorithm:                      StateResV1,
-		eventFormat:                            EventFormatV1,
-		eventIDFormat:                          EventIDFormatV1,
-		redactionAlgorithm:                     redactEventJSONV1,
-		signatureValidityCheckFunc:             NoStrictValidityCheck,
-		canonicalJSONCheck:                     noVerifyCanonicalJSON,
-		notificationLevelCheck:                 noCheckLevels,
-		restrictedJoinServernameFunc:           emptyAuthorisedViaServerName,
-		checkRestrictedJoin:                    noCheckRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               disallowKnocking,
-		checkRestrictedJoinAllowedFunc:         disallowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV1,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV1,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV1,
-	},
-	FrameVersionV2: FrameVersionImpl{
-		ver:                                    FrameVersionV2,
-		stable:                                 true,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV1,
-		eventIDFormat:                          EventIDFormatV1,
-		redactionAlgorithm:                     redactEventJSONV1,
-		signatureValidityCheckFunc:             NoStrictValidityCheck,
-		canonicalJSONCheck:                     noVerifyCanonicalJSON,
-		notificationLevelCheck:                 noCheckLevels,
-		restrictedJoinServernameFunc:           emptyAuthorisedViaServerName,
-		checkRestrictedJoin:                    noCheckRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               disallowKnocking,
-		checkRestrictedJoinAllowedFunc:         disallowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV1,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV1,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV1,
-	},
-	FrameVersionV3: FrameVersionImpl{
-		ver:                                    FrameVersionV3,
-		stable:                                 true,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV2,
-		redactionAlgorithm:                     redactEventJSONV1,
-		signatureValidityCheckFunc:             NoStrictValidityCheck,
-		canonicalJSONCheck:                     noVerifyCanonicalJSON,
-		notificationLevelCheck:                 noCheckLevels,
-		restrictedJoinServernameFunc:           emptyAuthorisedViaServerName,
-		checkRestrictedJoin:                    noCheckRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               disallowKnocking,
-		checkRestrictedJoinAllowedFunc:         disallowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
-	FrameVersionV4: FrameVersionImpl{
-		ver:                                    FrameVersionV4,
-		stable:                                 true,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV3,
-		redactionAlgorithm:                     redactEventJSONV1,
-		signatureValidityCheckFunc:             NoStrictValidityCheck,
-		canonicalJSONCheck:                     noVerifyCanonicalJSON,
-		notificationLevelCheck:                 noCheckLevels,
-		restrictedJoinServernameFunc:           emptyAuthorisedViaServerName,
-		checkRestrictedJoin:                    noCheckRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               disallowKnocking,
-		checkRestrictedJoinAllowedFunc:         disallowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
-	FrameVersionV5: FrameVersionImpl{
-		ver:                                    FrameVersionV5,
-		stable:                                 true,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV3,
-		redactionAlgorithm:                     redactEventJSONV1,
-		signatureValidityCheckFunc:             StrictValiditySignatureCheck,
-		canonicalJSONCheck:                     noVerifyCanonicalJSON,
-		notificationLevelCheck:                 noCheckLevels,
-		restrictedJoinServernameFunc:           emptyAuthorisedViaServerName,
-		checkRestrictedJoin:                    noCheckRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               disallowKnocking,
-		checkRestrictedJoinAllowedFunc:         disallowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
-	FrameVersionV6: FrameVersionImpl{
-		ver:                                    FrameVersionV6,
-		stable:                                 true,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV3,
-		redactionAlgorithm:                     redactEventJSONV2,
-		signatureValidityCheckFunc:             StrictValiditySignatureCheck,
-		canonicalJSONCheck:                     verifyEnforcedCanonicalJSON,
-		notificationLevelCheck:                 checkNotificationLevels,
-		restrictedJoinServernameFunc:           emptyAuthorisedViaServerName,
-		checkRestrictedJoin:                    noCheckRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               disallowKnocking,
-		checkRestrictedJoinAllowedFunc:         disallowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
-	FrameVersionV7: FrameVersionImpl{
-		ver:                                    FrameVersionV7,
-		stable:                                 true,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV3,
-		redactionAlgorithm:                     redactEventJSONV2,
-		signatureValidityCheckFunc:             StrictValiditySignatureCheck,
-		canonicalJSONCheck:                     verifyEnforcedCanonicalJSON,
-		notificationLevelCheck:                 checkNotificationLevels,
-		restrictedJoinServernameFunc:           emptyAuthorisedViaServerName,
-		checkRestrictedJoin:                    noCheckRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               checkKnocking,
-		checkRestrictedJoinAllowedFunc:         disallowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
-	FrameVersionV8: FrameVersionImpl{
-		ver:                                    FrameVersionV8,
-		stable:                                 true,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV3,
-		redactionAlgorithm:                     redactEventJSONV3,
-		signatureValidityCheckFunc:             StrictValiditySignatureCheck,
-		canonicalJSONCheck:                     verifyEnforcedCanonicalJSON,
-		notificationLevelCheck:                 checkNotificationLevels,
-		restrictedJoinServernameFunc:           extractAuthorisedViaServerName,
-		checkRestrictedJoin:                    checkRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               checkKnocking,
-		checkRestrictedJoinAllowedFunc:         allowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
-	FrameVersionV9: FrameVersionImpl{
-		ver:                                    FrameVersionV9,
-		stable:                                 true,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV3,
-		redactionAlgorithm:                     redactEventJSONV4,
-		signatureValidityCheckFunc:             StrictValiditySignatureCheck,
-		canonicalJSONCheck:                     verifyEnforcedCanonicalJSON,
-		notificationLevelCheck:                 checkNotificationLevels,
-		restrictedJoinServernameFunc:           extractAuthorisedViaServerName,
-		checkRestrictedJoin:                    checkRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               checkKnocking,
-		checkRestrictedJoinAllowedFunc:         allowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
 	FrameVersionV10: FrameVersionImpl{
 		ver:                                    FrameVersionV10,
 		stable:                                 true,
@@ -266,65 +86,9 @@ var frameVersionMeta = map[FrameVersion]IFrameVersion{
 		parsePowerLevelsFunc:                   parseIntegerPowerLevels,
 		checkKnockingAllowedFunc:               checkKnocking,
 		checkRestrictedJoinAllowedFunc:         allowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
-	FrameVersionPseudoIDs: FrameVersionImpl{ // currently, just a copy of V10
-		ver:                                    FrameVersionPseudoIDs,
-		stable:                                 false,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV3,
-		redactionAlgorithm:                     redactEventJSONV4,
-		signatureValidityCheckFunc:             StrictValiditySignatureCheck,
-		canonicalJSONCheck:                     verifyEnforcedCanonicalJSON,
-		notificationLevelCheck:                 checkNotificationLevels,
-		restrictedJoinServernameFunc:           extractAuthorisedViaServerName,
-		checkRestrictedJoin:                    checkRestrictedJoin,
-		parsePowerLevelsFunc:                   parseIntegerPowerLevels,
-		checkKnockingAllowedFunc:               checkKnocking,
-		checkRestrictedJoinAllowedFunc:         allowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
-	"org.coddy.msc3667": FrameVersionImpl{ // based on frame version 7
-		ver:                                    FrameVersion("org.coddy.msc3667"),
-		stable:                                 false,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV3,
-		redactionAlgorithm:                     redactEventJSONV2,
-		signatureValidityCheckFunc:             StrictValiditySignatureCheck,
-		canonicalJSONCheck:                     verifyEnforcedCanonicalJSON,
-		notificationLevelCheck:                 checkNotificationLevels,
-		restrictedJoinServernameFunc:           emptyAuthorisedViaServerName,
-		checkRestrictedJoin:                    noCheckRestrictedJoin,
-		parsePowerLevelsFunc:                   parseIntegerPowerLevels,
-		checkKnockingAllowedFunc:               checkKnocking,
-		checkRestrictedJoinAllowedFunc:         disallowRestrictedJoins,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
-	},
-	"org.coddy.msc3787": FrameVersionImpl{ // roughly, the union of v7 and v9
-		ver:                                    FrameVersion("org.coddy.msc3787"),
-		stable:                                 false,
-		stateResAlgorithm:                      StateResV2,
-		eventFormat:                            EventFormatV2,
-		eventIDFormat:                          EventIDFormatV3,
-		redactionAlgorithm:                     redactEventJSONV4,
-		signatureValidityCheckFunc:             StrictValiditySignatureCheck,
-		canonicalJSONCheck:                     verifyEnforcedCanonicalJSON,
-		notificationLevelCheck:                 checkNotificationLevels,
-		restrictedJoinServernameFunc:           extractAuthorisedViaServerName,
-		checkRestrictedJoin:                    checkRestrictedJoin,
-		parsePowerLevelsFunc:                   parsePowerLevels,
-		checkKnockingAllowedFunc:               checkKnocking,
-		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSONV2,
-		newEventFromTrustedJSONFunc:            newEventFromTrustedJSONV2,
-		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventIDV2,
+		newEventFromUntrustedJSONFunc:          newEventFromUntrustedJSON,
+		newEventFromTrustedJSONFunc:            newEventFromTrustedJSON,
+		newEventFromTrustedJSONWithEventIDFunc: newEventFromTrustedJSONWithEventID,
 	},
 }
 
@@ -484,15 +248,15 @@ func (v FrameVersionImpl) RedactEventJSON(eventJSON []byte) ([]byte, error) {
 	return v.redactionAlgorithm(eventJSON)
 }
 
-func (v FrameVersionImpl) NewEventFromTrustedJSON(eventJSON []byte, redacted bool) (result PDU, err error) {
+func (v FrameVersionImpl) EventFromTrustedJSON(eventJSON []byte, redacted bool) (result PDU, err error) {
 	return v.newEventFromTrustedJSONFunc(eventJSON, redacted, v)
 }
 
-func (v FrameVersionImpl) NewEventFromTrustedJSONWithEventID(eventID string, eventJSON []byte, redacted bool) (result PDU, err error) {
+func (v FrameVersionImpl) EventFromTrustedJSONWithEventID(eventID string, eventJSON []byte, redacted bool) (result PDU, err error) {
 	return v.newEventFromTrustedJSONWithEventIDFunc(eventID, eventJSON, redacted, v)
 }
 
-func (v FrameVersionImpl) NewEventFromUntrustedJSON(eventJSON []byte) (result PDU, err error) {
+func (v FrameVersionImpl) EventFromUntrustedJSON(eventJSON []byte) (result PDU, err error) {
 	return v.newEventFromUntrustedJSONFunc(eventJSON, v)
 }
 
@@ -530,7 +294,7 @@ func NewEventFromHeaderedJSON(headeredEventJSON []byte, redacted bool) (PDU, err
 	headeredEventJSON, _ = sjson.DeleteBytes(headeredEventJSON, "_event_id")
 	headeredEventJSON, _ = sjson.DeleteBytes(headeredEventJSON, "_frame_version")
 
-	return verImpl.NewEventFromTrustedJSONWithEventID(eventID, headeredEventJSON, redacted)
+	return verImpl.EventFromTrustedJSONWithEventID(eventID, headeredEventJSON, redacted)
 }
 
 // UnsupportedFrameVersionError occurs when a call has been made with a frame

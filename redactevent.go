@@ -27,28 +27,7 @@ type unredactableEventFields struct {
 
 // For satisfying "The content object must also be stripped of all keys, unless it is one of one of the following event types:"
 var (
-	unredactableContentFieldsV1 = map[string][]string{
-		"m.frame.member":             {"membership"},
-		"m.frame.create":             {"creator"},
-		"m.frame.join_rules":         {"join_rule"},
-		"m.frame.power_levels":       {"ban", "events", "events_default", "kick", "redact", "state_default", "users", "users_default"},
-		"m.frame.aliases":            {"aliases"},
-		"m.frame.history_visibility": {"history_visibility"},
-	}
-	unredactableContentFieldsV2 = map[string][]string{
-		"m.frame.member":             {"membership"},
-		"m.frame.create":             {"creator"},
-		"m.frame.join_rules":         {"join_rule"},
-		"m.frame.power_levels":       {"ban", "events", "events_default", "kick", "redact", "state_default", "users", "users_default"},
-		"m.frame.history_visibility": {"history_visibility"},
-	}
-	unredactableContentFieldsV3 = map[string][]string{
-		"m.frame.member":             {"membership"},
-		"m.frame.create":             {"creator"},
-		"m.frame.join_rules":         {"join_rule", "allow"},
-		"m.frame.power_levels":       {"ban", "events", "events_default", "kick", "redact", "state_default", "users", "users_default"},
-		"m.frame.history_visibility": {"history_visibility"},
-	}
+
 	unredactableContentFieldsV4 = map[string][]string{
 		"m.frame.member":             {"membership", "join_authorised_via_users_server"},
 		"m.frame.create":             {"creator"},
@@ -63,26 +42,6 @@ var (
 // which protects membership 'join_authorised_via_users_server' key
 func redactEventJSONV4(eventJSON []byte) ([]byte, error) {
 	return redactEventJSON(eventJSON, unredactableContentFieldsV4)
-}
-
-// RedactEvent strips the user controlled fields from an event, but leaves the
-// fields necessary for authenticating the event. 
-// which protects join rules 'allow' key
-func redactEventJSONV3(eventJSON []byte) ([]byte, error) {
-	return redactEventJSON(eventJSON, unredactableContentFieldsV3)
-}
-
-// RedactEvent strips the user controlled fields from an event, but leaves the
-// fields necessary for authenticating the event.
-// which has no special meaning for m.frame.aliases
-func redactEventJSONV2(eventJSON []byte) ([]byte, error) {
-	return redactEventJSON(eventJSON, unredactableContentFieldsV2)
-}
-
-// RedactEvent strips the user controlled fields from an event, but leaves the
-// fields necessary for authenticating the event.
-func redactEventJSONV1(eventJSON []byte) ([]byte, error) {
-	return redactEventJSON(eventJSON, unredactableContentFieldsV1)
 }
 
 func redactEventJSON(eventJSON []byte, eventTypeToKeepContentFields map[string][]string) ([]byte, error) {

@@ -40,10 +40,10 @@ type ProtoEvent struct {
 	StateKey *string `json:"state_key,omitempty"`
 	// The events that immediately preceded this event in the frame history. This can be
 	// either []eventReference for frame v1/v2, and []string for frame v3 onwards.
-	PrevEvents interface{} `json:"prev_events"`
+	PrevEvents []string `json:"prev_events"`
 	// The events needed to authenticate this event. This can be
 	// either []eventReference for frame v1/v2, and []string for frame v3 onwards.
-	AuthEvents interface{} `json:"auth_events"`
+	AuthEvents []string `json:"auth_events"`
 	// The event ID of the event being redacted if this event is a "m.frame.redaction".
 	Redacts string `json:"redacts,omitempty"`
 	// The depth of the event, This should be one greater than the maximum depth of the previous events.

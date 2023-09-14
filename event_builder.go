@@ -206,7 +206,7 @@ func (eb *EventBuilder) Build(
 		return
 	}
 
-	res, err := eb.version.NewEventFromTrustedJSON(eventJSON, false)
+	res, err := eb.version.EventFromTrustedJSON(eventJSON, false)
 	if err != nil {
 		return nil, err
 	}

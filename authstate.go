@@ -9,22 +9,22 @@ import (
 	"github.com/withqb/xutil"
 )
 
-// StateProvider is capable of returning the frame state at any point in time.
+// StateProvider is capable of returning the room state at any point in time.
 type StateProvider interface {
 	// StateIDsBeforeEvent returns a list of state event IDs for the event ID provided, which represent the entire
-	// frame state before that event.
+	// room state before that event.
 	StateIDsBeforeEvent(ctx context.Context, event PDU) ([]string, error)
-	// StateBeforeEvent returns the state of the frame before the given event. `eventIDs` will be populated with the output
+	// StateBeforeEvent returns the state of the room before the given event. `eventIDs` will be populated with the output
 	// of StateIDsAtEvent to aid in event retrieval.
-	StateBeforeEvent(ctx context.Context, frameVer FrameVersion, event PDU, eventIDs []string) (map[string]PDU, error)
+	StateBeforeEvent(ctx context.Context, roomVer FrameVersion, event PDU, eventIDs []string) (map[string]PDU, error)
 }
 
 type FederatedStateClient interface {
 	LookupState(
-		ctx context.Context, origin, s spec.ServerName, frameID, eventID string, frameVersion FrameVersion,
+		ctx context.Context, origin, s spec.ServerName, roomID, eventID string, frameVersion FrameVersion,
 	) (res StateResponse, err error)
 	LookupStateIDs(
-		ctx context.Context, origin, s spec.ServerName, frameID, eventID string,
+		ctx context.Context, origin, s spec.ServerName, roomID, eventID string,
 	) (res StateIDResponse, err error)
 }
 
@@ -56,7 +56,7 @@ type FederatedStateProvider struct {
 	// The remote server to ask.
 	Origin spec.ServerName
 	Server spec.ServerName
-	// Set to true to remember the auth event IDs for the frame at various states
+	// Set to true to remember the auth event IDs for the room at various states
 	RememberAuthEvents bool
 	// Maps which are populated if AuthEvents is true, so you know which events are required to do PDU checks.
 	EventToAuthEventIDs map[string][]string
@@ -76,18 +76,18 @@ func (p *FederatedStateProvider) StateIDsBeforeEvent(ctx context.Context, event 
 }
 
 // StateBeforeEvent implements StateProvider
-func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, frameVer FrameVersion, event PDU, eventIDs []string) (map[string]PDU, error) {
-	res, err := p.FedClient.LookupState(ctx, p.Origin, p.Server, event.FrameID(), event.EventID(), frameVer)
+func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, roomVer FrameVersion, event PDU, eventIDs []string) (map[string]PDU, error) {
+	res, err := p.FedClient.LookupState(ctx, p.Origin, p.Server, event.FrameID(), event.EventID(), roomVer)
 	if err != nil {
 		return nil, err
 	}
-	frameVerImpl, err := GetFrameVersion(frameVer)
+	roomVerImpl, err := GetFrameVersion(roomVer)
 	if err != nil {
 		return nil, err
 	}
 	if p.RememberAuthEvents {
 		for _, js := range res.GetAuthEvents() {
-			event, err := frameVerImpl.NewEventFromUntrustedJSON(js)
+			event, err := roomVerImpl.EventFromUntrustedJSON(js)
 			if err != nil {
 				continue
 			}
@@ -97,7 +97,7 @@ func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, frameVer 
 
 	result := make(map[string]PDU)
 	for _, js := range res.GetStateEvents() {
-		event, err := frameVerImpl.NewEventFromUntrustedJSON(js)
+		event, err := roomVerImpl.EventFromUntrustedJSON(js)
 		if err != nil {
 			continue
 		}
@@ -106,19 +106,19 @@ func (p *FederatedStateProvider) StateBeforeEvent(ctx context.Context, frameVer 
 	return result, nil
 }
 
-// VerifyAuthRulesAtState will check that the auth_events in the given event are valid at the state of the frame before that event.
+// VerifyAuthRulesAtState will check that the auth_events in the given event are valid at the state of the room before that event.
 //
-// This implements Step 5 of checks-performed-on-receipt-of-a-pdu
+// This implements Step 5 of https://matrix.org/docs/spec/server_server/latest#checks-performed-on-receipt-of-a-pdu
 // "Passes authorization rules based on the state at the event, otherwise it is rejected."
 //
 // If `allowValidation` is true:
-// This check initially attempts to validate that the auth_events are in the target frame state, and if they are it will short-circuit
+// This check initially attempts to validate that the auth_events are in the target room state, and if they are it will short-circuit
 // and succeed early. THIS IS ONLY VALID IF STEP 4 HAS BEEN PREVIOUSLY APPLIED. Otherwise, a malicious server could lie and say that
 // no auth_events are required and this function will short-circuit and allow it.
 func VerifyAuthRulesAtState(ctx context.Context, sp StateProvider, eventToVerify PDU, allowValidation bool, userIDForSender spec.UserIDForSender) error {
 	stateIDs, err := sp.StateIDsBeforeEvent(ctx, eventToVerify)
 	if err != nil {
-		return fmt.Errorf("gocoddyserverlib.VerifyAuthRulesAtState: cannot fetch state IDs before event %s: %w", eventToVerify.EventID(), err)
+		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: cannot fetch state IDs before event %s: %w", eventToVerify.EventID(), err)
 	}
 
 	if allowValidation {
@@ -141,20 +141,20 @@ func VerifyAuthRulesAtState(ctx context.Context, sp StateProvider, eventToVerify
 		}
 	}
 	if ctx.Err() != nil {
-		return fmt.Errorf("gocoddyserverlib.VerifyAuthRulesAtState: context cancelled: %w", ctx.Err())
+		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: context cancelled: %w", ctx.Err())
 	}
 
 	// slow path: fetch the events at this state and check auth
-	frameState, err := sp.StateBeforeEvent(ctx, eventToVerify.Version(), eventToVerify, stateIDs)
+	roomState, err := sp.StateBeforeEvent(ctx, eventToVerify.Version(), eventToVerify, stateIDs)
 	if err != nil {
-		return fmt.Errorf("gocoddyserverlib.VerifyAuthRulesAtState: cannot get state at event %s: %w", eventToVerify.EventID(), err)
+		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: cannot get state at event %s: %w", eventToVerify.EventID(), err)
 	}
 	if ctx.Err() != nil {
-		return fmt.Errorf("gocoddyserverlib.VerifyAuthRulesAtState: context cancelled: %w", ctx.Err())
+		return fmt.Errorf("gomatrixserverlib.VerifyAuthRulesAtState: context cancelled: %w", ctx.Err())
 	}
-	if err := checkAllowedByAuthEvents(eventToVerify, frameState, nil, userIDForSender); err != nil {
+	if err := checkAllowedByAuthEvents(eventToVerify, roomState, nil, userIDForSender); err != nil {
 		return fmt.Errorf(
-			"gocoddyserverlib.VerifyAuthRulesAtState: event %s is not allowed at state %s : %w",
+			"gomatrixserverlib.VerifyAuthRulesAtState: event %s is not allowed at state %s : %w",
 			eventToVerify.EventID(), eventToVerify.EventID(), err,
 		)
 	}
@@ -216,7 +216,7 @@ func checkAllowedByAuthEvents(
 	// as described by AuthEventIDs(). Check if they allow the event.
 	if err := Allowed(event, &authEvents, userIDForSender); err != nil {
 		return fmt.Errorf(
-			"gocoddyserverlib: event with ID %q is not allowed by its auth_events: %s",
+			"gomatrixserverlib: event with ID %q is not allowed by its auth_events: %s",
 			event.EventID(), err.Error(),
 		)
 	}
@@ -228,16 +228,16 @@ func checkAllowedByAuthEvents(
 // auth events (first return parameter) and state events (second
 // return parameter). Does not alter any input args.
 func CheckStateResponse(
-	ctx context.Context, r StateResponse, frameVersion FrameVersion,
+	ctx context.Context, r StateResponse, roomVersion FrameVersion,
 	keyRing JSONVerifier, missingAuth EventProvider, userIDForSender spec.UserIDForSender,
 ) ([]PDU, []PDU, error) {
 	logger := xutil.GetLogger(ctx)
-	authEvents := r.GetAuthEvents().UntrustedEvents(frameVersion)
-	stateEvents := r.GetStateEvents().UntrustedEvents(frameVersion)
+	authEvents := r.GetAuthEvents().UntrustedEvents(roomVersion)
+	stateEvents := r.GetStateEvents().UntrustedEvents(roomVersion)
 	var allEvents []PDU
 	for _, event := range authEvents {
 		if event.StateKey() == nil {
-			return nil, nil, fmt.Errorf("gocoddyserverlib: event %q does not have a state key", event.EventID())
+			return nil, nil, fmt.Errorf("gomatrixserverlib: event %q does not have a state key", event.EventID())
 		}
 		allEvents = append(allEvents, event)
 	}
@@ -245,12 +245,12 @@ func CheckStateResponse(
 	stateTuples := map[StateKeyTuple]bool{}
 	for _, event := range stateEvents {
 		if event.StateKey() == nil {
-			return nil, nil, fmt.Errorf("gocoddyserverlib: event %q does not have a state key", event.EventID())
+			return nil, nil, fmt.Errorf("gomatrixserverlib: event %q does not have a state key", event.EventID())
 		}
 		stateTuple := StateKeyTuple{EventType: event.Type(), StateKey: *event.StateKey()}
 		if stateTuples[stateTuple] {
 			return nil, nil, fmt.Errorf(
-				"gocoddyserverlib: duplicate state key tuple (%q, %q)",
+				"gomatrixserverlib: duplicate state key tuple (%q, %q)",
 				event.Type(), *event.StateKey(),
 			)
 		}
@@ -259,7 +259,7 @@ func CheckStateResponse(
 	}
 
 	// Check if the events pass signature checks.
-	logger.Infof("Checking event signatures for %d events of frame state", len(allEvents))
+	logger.Infof("Checking event signatures for %d events of room state", len(allEvents))
 	errors := VerifyAllEventSignatures(ctx, allEvents, keyRing, userIDForSender)
 	if len(errors) != len(allEvents) {
 		return nil, nil, fmt.Errorf("expected %d errors but got %d", len(allEvents), len(errors))
@@ -313,14 +313,14 @@ func CheckStateResponse(
 }
 
 // Check that a response to /send_join is valid. If it is then it
-// returns a reference to the RespState that contains the frame state
+// returns a reference to the RespState that contains the room state
 // excluding any events that failed signature checks.
 // This checks that it would be valid as a response to /state.
 // This also checks that the join event is allowed by the state.
 // This function mutates the RespSendJoin to remove any events from
 // AuthEvents or StateEvents that do not have valid signatures.
 func CheckSendJoinResponse(
-	ctx context.Context, frameVersion FrameVersion, r StateResponse,
+	ctx context.Context, roomVersion FrameVersion, r StateResponse,
 	keyRing JSONVerifier, joinEvent PDU,
 	missingAuth EventProvider, userIDForSender spec.UserIDForSender,
 ) (StateResponse, error) {
@@ -329,7 +329,7 @@ func CheckSendJoinResponse(
 	//
 	// The response to /send_join has the same data as a response to /state
 	// and the checks for a response to /state also apply.
-	authEvents, stateEvents, err := CheckStateResponse(ctx, r, frameVersion, keyRing, missingAuth, userIDForSender)
+	authEvents, stateEvents, err := CheckStateResponse(ctx, r, roomVersion, keyRing, missingAuth, userIDForSender)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +353,7 @@ func CheckSendJoinResponse(
 	// Now check that the join event is valid against its auth events.
 	if err := checkAllowedByAuthEvents(joinEvent, eventsByID, missingAuth, userIDForSender); err != nil {
 		return nil, fmt.Errorf(
-			"gocoddyserverlib: event with ID %q is not allowed by its auth events: %w",
+			"gomatrixserverlib: event with ID %q is not allowed by its auth events: %w",
 			joinEvent.EventID(), err,
 		)
 	}
@@ -371,7 +371,7 @@ func CheckSendJoinResponse(
 	// Now check that the join event is valid against the supplied state.
 	if err := Allowed(joinEvent, &authEventProvider, userIDForSender); err != nil {
 		return nil, fmt.Errorf(
-			"gocoddyserverlib: event with ID %q is not allowed by the current frame state: %w",
+			"gomatrixserverlib: event with ID %q is not allowed by the current room state: %w",
 			joinEvent.EventID(), err,
 		)
 	}
@@ -385,9 +385,9 @@ func CheckSendJoinResponse(
 // LineariseStateResponse combines the auth events and the state events and returns
 // them in an order where every event comes after its auth events.
 // Each event will only appear once in the output list.
-func LineariseStateResponse(frameVersion FrameVersion, r StateResponse) []PDU {
-	authEvents := r.GetAuthEvents().UntrustedEvents(frameVersion)
-	stateEvents := r.GetStateEvents().UntrustedEvents(frameVersion)
+func LineariseStateResponse(roomVersion FrameVersion, r StateResponse) []PDU {
+	authEvents := r.GetAuthEvents().UntrustedEvents(roomVersion)
+	stateEvents := r.GetStateEvents().UntrustedEvents(roomVersion)
 	eventsByID := make(map[string]PDU, len(authEvents)+len(stateEvents))
 	for i, event := range authEvents {
 		eventsByID[event.EventID()] = authEvents[i]

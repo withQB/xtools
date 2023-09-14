@@ -45,7 +45,7 @@ func NewEventsLoader(frameVer FrameVersion, keyRing JSONVerifier, stateProvider 
 // The order of the returned events depends on `sortOrder`. The events are reverse topologically sorted by the ordering specified. However,
 // in order to sort the events must be loaded which could fail. For those events which fail to be loaded, they will
 // be put at the end of the returned slice.
-func (l *EventsLoader) LoadAndVerify(ctx context.Context, rawEvents []json.RawMessage, sortOrder TopologicalOrder, userIDForSender spec.UserIDForSender) ([]EventLoadResult, error) {
+func (l *EventsLoader) LoadAndVerify(ctx context.Context, rawEvents []json.RawMessage, userIDForSender spec.UserIDForSender) ([]EventLoadResult, error) {
 	results := make([]EventLoadResult, len(rawEvents))
 
 	verImpl, err := GetFrameVersion(l.frameVer)
@@ -58,7 +58,7 @@ func (l *EventsLoader) LoadAndVerify(ctx context.Context, rawEvents []json.RawMe
 	events := make([]PDU, 0, len(rawEvents))
 	errs := make([]error, 0, len(rawEvents))
 	for _, rawEv := range rawEvents {
-		event, err := verImpl.NewEventFromUntrustedJSON(rawEv)
+		event, err := verImpl.EventFromUntrustedJSON(rawEv)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -66,13 +66,6 @@ func (l *EventsLoader) LoadAndVerify(ctx context.Context, rawEvents []json.RawMe
 		events = append(events, event)
 	}
 
-	events = ReverseTopologicalOrdering(events, sortOrder)
-	// assign the errors to the end of the slice
-	for i := 0; i < len(errs); i++ {
-		results[len(results)-len(errs)+i] = EventLoadResult{
-			Error: errs[i],
-		}
-	}
 	// at this point, the three slices look something like:
 	// results: [ _ , _ , _ , err1 , err2 ]
 	// errs: [ err1, err2 ]
@@ -112,7 +105,7 @@ func (l *EventsLoader) LoadAndVerify(ctx context.Context, rawEvents []json.RawMe
 		}
 	}
 
-	// TDO: performSoftFailCheck, needs forward extremity
+	// TODO: performSoftFailCheck, needs forward extremity
 	return results, nil
 }
 

@@ -4,7 +4,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/withqb/xtools/spec"
@@ -38,9 +37,9 @@ type PreviousFrame struct {
 	EventID string `json:"event_id"`
 }
 
-// NewCreateContentFromAuthEvents loads the create event content from the create event in the
+// CreateContentFromAuthEvents loads the create event content from the create event in the
 // auth events.
-func NewCreateContentFromAuthEvents(authEvents AuthEventProvider, userIDForSender spec.UserIDForSender) (c CreateContent, err error) {
+func CreateContentFromAuthEvents(authEvents AuthEventProvider, userIDForSender spec.UserIDForSender) (c CreateContent, err error) {
 	var createEvent PDU
 	if createEvent, err = authEvents.Create(); err != nil {
 		return
@@ -170,9 +169,9 @@ type MemberThirdPartyInviteSigned struct {
 	Token      string                       `json:"token"`
 }
 
-// NewMemberContentFromAuthEvents loads the member content from the member event for the senderID in the auth events.
+// MemberContentFromAuthEvents loads the member content from the member event for the senderID in the auth events.
 // Returns an error if there was an error loading the member event or parsing the event content.
-func NewMemberContentFromAuthEvents(authEvents AuthEventProvider, senderID spec.SenderID) (c MemberContent, err error) {
+func MemberContentFromAuthEvents(authEvents AuthEventProvider, senderID spec.SenderID) (c MemberContent, err error) {
 	var memberEvent PDU
 	if memberEvent, err = authEvents.Member(senderID); err != nil {
 		return
@@ -183,12 +182,12 @@ func NewMemberContentFromAuthEvents(authEvents AuthEventProvider, senderID spec.
 		c.Membership = spec.Leave
 		return
 	}
-	return NewMemberContentFromEvent(memberEvent)
+	return MemberContentFromEvent(memberEvent)
 }
 
-// NewMemberContentFromEvent parse the member content from an event.
+// MemberContentFromEvent parse the member content from an event.
 // Returns an error if the content couldn't be parsed.
-func NewMemberContentFromEvent(event PDU) (c MemberContent, err error) {
+func MemberContentFromEvent(event PDU) (c MemberContent, err error) {
 	if err = json.Unmarshal(event.Content(), &c); err != nil {
 		var partial membershipContent
 		if err = json.Unmarshal(event.Content(), &partial); err != nil {
@@ -219,9 +218,9 @@ type PublicKey struct {
 	KeyValidityURL string           `json:"key_validity_url"`
 }
 
-// NewThirdPartyInviteContentFromAuthEvents loads the third party invite content from the third party invite event for the state key (token) in the auth events.
+// ThirdPartyInviteContentFromAuthEvents loads the third party invite content from the third party invite event for the state key (token) in the auth events.
 // Returns an error if there was an error loading the third party invite event or parsing the event content.
-func NewThirdPartyInviteContentFromAuthEvents(authEvents AuthEventProvider, token string) (t ThirdPartyInviteContent, err error) {
+func ThirdPartyInviteContentFromAuthEvents(authEvents AuthEventProvider, token string) (t ThirdPartyInviteContent, err error) {
 	var thirdPartyInviteEvent PDU
 	if thirdPartyInviteEvent, err = authEvents.ThirdPartyInvite(token); err != nil {
 		return
@@ -312,9 +311,9 @@ type JoinRuleContentAllowRule struct {
 	FrameID string `json:"frame_id"`
 }
 
-// NewJoinRuleContentFromAuthEvents loads the join rule content from the join rules event in the auth event.
+// JoinRuleContentFromAuthEvents loads the join rule content from the join rules event in the auth event.
 // Returns an error if there was an error loading the join rule event or parsing the content.
-func NewJoinRuleContentFromAuthEvents(authEvents AuthEventProvider) (c JoinRuleContent, err error) {
+func JoinRuleContentFromAuthEvents(authEvents AuthEventProvider) (c JoinRuleContent, err error) {
 	// Start off with "invite" as the default. Hopefully the unmarshal
 	// step later will replace it with a better value.
 	c.JoinRule = spec.Invite
@@ -334,7 +333,7 @@ func NewJoinRuleContentFromAuthEvents(authEvents AuthEventProvider) (c JoinRuleC
 }
 
 // PowerLevelContent is the JSON content of a m.frame.power_levels event needed for auth checks.
-// Typically the user calls NewPowerLevelContentFromAuthEvents instead of
+// Typically the user calls PowerLevelContentFromAuthEvents instead of
 // unmarshalling the content directly from JSON so defaults can be applied.
 // However, the JSON key names are still preserved so it's possible to marshal
 // the struct into JSON easily.
@@ -389,16 +388,16 @@ func (c *PowerLevelContent) NotificationLevel(notification string) int64 {
 	return 50
 }
 
-// NewPowerLevelContentFromAuthEvents loads the power level content from the
+// PowerLevelContentFromAuthEvents loads the power level content from the
 // power level event in the auth events or returns the default values if there
 // is no power level event.
-func NewPowerLevelContentFromAuthEvents(authEvents AuthEventProvider, creatorUserID string) (c PowerLevelContent, err error) {
+func PowerLevelContentFromAuthEvents(authEvents AuthEventProvider, creatorUserID string) (c PowerLevelContent, err error) {
 	powerLevelsEvent, err := authEvents.PowerLevels()
 	if err != nil {
 		return
 	}
 	if powerLevelsEvent != nil {
-		return NewPowerLevelContentFromEvent(powerLevelsEvent)
+		return PowerLevelContentFromEvent(powerLevelsEvent)
 	}
 
 	// If there are no power levels then fall back to defaults.
@@ -429,8 +428,8 @@ func (c *PowerLevelContent) Defaults() {
 	}
 }
 
-// NewPowerLevelContentFromEvent loads the power level content from an event.
-func NewPowerLevelContentFromEvent(event PDU) (c PowerLevelContent, err error) {
+// PowerLevelContentFromEvent loads the power level content from an event.
+func PowerLevelContentFromEvent(event PDU) (c PowerLevelContent, err error) {
 	// Set the levels to their default values.
 	c.Defaults()
 
@@ -450,101 +449,6 @@ func NewPowerLevelContentFromEvent(event PDU) (c PowerLevelContent, err error) {
 // error if one of the power levels isn't an int64.
 func parseIntegerPowerLevels(contentBytes []byte, c *PowerLevelContent) error {
 	return json.Unmarshal(contentBytes, c)
-}
-
-func parsePowerLevels(contentBytes []byte, c *PowerLevelContent) error {
-	// We can't extract the JSON directly to the powerLevelContent because we
-	// need to convert string values to int values.
-	var content struct {
-		InviteLevel        levelJSONValue            `json:"invite"`
-		BanLevel           levelJSONValue            `json:"ban"`
-		KickLevel          levelJSONValue            `json:"kick"`
-		RedactLevel        levelJSONValue            `json:"redact"`
-		UserLevels         map[string]levelJSONValue `json:"users"`
-		UsersDefaultLevel  levelJSONValue            `json:"users_default"`
-		EventLevels        map[string]levelJSONValue `json:"events"`
-		StateDefaultLevel  levelJSONValue            `json:"state_default"`
-		EventDefaultLevel  levelJSONValue            `json:"events_default"`
-		NotificationLevels map[string]levelJSONValue `json:"notifications"`
-	}
-	if err := json.Unmarshal(contentBytes, &content); err != nil {
-		return errorf("unparseable power_levels event content: %s", err.Error())
-	}
-
-	// Update the levels with the values that are present in the event content.
-	content.InviteLevel.assignIfExists(&c.Invite)
-	content.BanLevel.assignIfExists(&c.Ban)
-	content.KickLevel.assignIfExists(&c.Kick)
-	content.RedactLevel.assignIfExists(&c.Redact)
-	content.UsersDefaultLevel.assignIfExists(&c.UsersDefault)
-	content.StateDefaultLevel.assignIfExists(&c.StateDefault)
-	content.EventDefaultLevel.assignIfExists(&c.EventsDefault)
-
-	for k, v := range content.UserLevels {
-		if c.Users == nil {
-			c.Users = make(map[string]int64)
-		}
-		c.Users[k] = v.value
-	}
-
-	for k, v := range content.EventLevels {
-		if c.Events == nil {
-			c.Events = make(map[string]int64)
-		}
-		c.Events[k] = v.value
-	}
-
-	for k, v := range content.NotificationLevels {
-		if c.Notifications == nil {
-			c.Notifications = make(map[string]int64)
-		}
-		c.Notifications[k] = v.value
-	}
-	return nil
-}
-
-// A levelJSONValue is used for unmarshalling power levels from JSON.
-// It is intended to replicate the effects of x = int(content["key"]) in python.
-type levelJSONValue struct {
-	// Was a value loaded from the JSON?
-	exists bool
-	// The integer value of the power level.
-	value int64
-}
-
-func (v *levelJSONValue) UnmarshalJSON(data []byte) error {
-	var stringValue string
-	var int64Value int64
-	var floatValue float64
-	var err error
-
-	// First try to unmarshal as an int64.
-	if int64Value, err = strconv.ParseInt(string(data), 10, 64); err != nil {
-		// If unmarshalling as an int64 fails try as a string.
-		if err = json.Unmarshal(data, &stringValue); err != nil {
-			// If unmarshalling as a string fails try as a float.
-			if floatValue, err = strconv.ParseFloat(string(data), 64); err != nil {
-				return err
-			}
-			int64Value = int64(floatValue)
-		} else {
-			// If we managed to get a string, try parsing the string as an int.
-			int64Value, err = strconv.ParseInt(strings.TrimSpace(stringValue), 10, 64)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	v.exists = true
-	v.value = int64Value
-	return nil
-}
-
-// assign the power level if a value was present in the JSON.
-func (v *levelJSONValue) assignIfExists(to *int64) {
-	if v.exists {
-		*to = v.value
-	}
 }
 
 // Check if the user ID is a valid user ID.

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tidwall/gjson"
 	"github.com/withqb/xtools/spec"
 	"github.com/withqb/xutil"
 )
@@ -107,13 +106,6 @@ func HandleMakeJoin(input HandleMakeJoinInput) (*HandleMakeJoinResponse, error) 
 		return nil, spec.Forbidden(err.Error())
 	}
 
-	// This ensures we send EventReferences for frame version v1 and v2. We need to do this, since we're
-	// returning the proto event, which isn't modified when running `Build`.
-	switch input.FrameVersion {
-	case FrameVersionV1, FrameVersionV2:
-		proto.AuthEvents = toEventReference(event.AuthEventIDs())
-		proto.PrevEvents = toEventReference(event.PrevEventIDs())
-	}
 
 	makeJoinResponse := HandleMakeJoinResponse{
 		JoinTemplateEvent: proto,
@@ -132,10 +124,6 @@ func frameVersionSupported(frameVersion FrameVersion, supportedVersions []FrameV
 	}
 
 	return remoteSupportsVersion
-}
-
-func noCheckRestrictedJoin(context.Context, spec.ServerName, RestrictedFrameJoinQuerier, spec.FrameID, spec.SenderID) (string, error) {
-	return "", nil
 }
 
 // checkRestrictedJoin finds out whether or not we can assist in processing
@@ -320,7 +308,7 @@ func HandleSendJoin(input HandleSendJoinInput) (*HandleSendJoinResponse, error) 
 		return nil, spec.UnsupportedFrameVersion(fmt.Sprintf("QueryFrameVersionForFrame returned unknown frame version: %s", input.FrameVersion))
 	}
 
-	event, err := verImpl.NewEventFromUntrustedJSON(input.JoinEvent)
+	event, err := verImpl.EventFromUntrustedJSON(input.JoinEvent)
 	if err != nil {
 		return nil, spec.BadJSON("The request body could not be decoded into valid JSON: " + err.Error())
 	}
@@ -331,24 +319,6 @@ func HandleSendJoin(input HandleSendJoinInput) (*HandleSendJoinResponse, error) 
 	}
 	if !event.StateKeyEquals(string(event.SenderID())) {
 		return nil, spec.BadJSON("Event state key must match the event sender.")
-	}
-
-	// validate the mxid_mapping of the event
-	if input.FrameVersion == FrameVersionPseudoIDs {
-		// validate the signature first
-		if err = validateMXIDMappingSignature(input.Context, event, input.Verifier, verImpl); err != nil {
-			return nil, spec.Forbidden(err.Error())
-		}
-
-		mapping := MXIDMapping{}
-		err = json.Unmarshal([]byte(gjson.GetBytes(input.JoinEvent, "content.mxid_mapping").Raw), &mapping)
-		if err != nil {
-			return nil, err
-		}
-		// store the user frame public key -> userID mapping
-		if err = input.StoreSenderIDFromPublicID(input.Context, mapping.UserFrameKey, mapping.UserID, input.FrameID); err != nil {
-			return nil, err
-		}
 	}
 
 	// Check that the sender belongs to the server that is sending us
@@ -364,10 +334,7 @@ func HandleSendJoin(input HandleSendJoinInput) (*HandleSendJoinResponse, error) 
 	// In pseudoID frames we don't need to hit federation endpoints to get e.g. signing keys,
 	// so we can replace the verifier with a more simple one which uses the senderID to verify the event.
 	toVerify := sender.Domain()
-	if input.FrameVersion == FrameVersionPseudoIDs {
-		input.Verifier = JSONVerifierSelf{}
-		toVerify = spec.ServerName(event.SenderID())
-	}
+
 
 	// Check that the frame ID is correct.
 	if event.FrameID() != input.FrameID.String() {
